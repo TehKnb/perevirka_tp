@@ -30,7 +30,10 @@ function boot() {
     return modelsPromise;
   };
 
-  const setup = createSetupScreen(media, getModels);
+  const setup = createSetupScreen(media, getModels, (result) => {
+    // Етап 4: тут відкриється екран запису (і буде зроблено скріншот).
+    console.info('Усі жорсткі критерії виконано стабільно', result);
+  });
   const devices = createDevicesScreen(media, () => {
     showScreen('setup');
     void setup.enter();

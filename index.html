@@ -76,7 +76,11 @@
             </div>
           </div>
           <aside class="setup-side">
-            <p class="main-hint" data-t="setup.intro"></p>
+            <p class="main-hint" id="main-hint" role="status" aria-live="polite" data-t="setup.intro"></p>
+            <h2 class="checklist-title" data-t="setup.checklistTitle"></h2>
+            <ul class="checklist" id="checklist"></ul>
+            <p class="muted small" data-t="setup.softNote"></p>
+            <p class="muted small" data-t="setup.reminder"></p>
             <button type="button" class="btn btn-secondary" id="btn-change-devices" data-t="setup.changeDevices"></button>
           </aside>
         </div>

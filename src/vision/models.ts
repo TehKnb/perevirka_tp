@@ -52,15 +52,23 @@ async function create(fileset: Awaited<ReturnType<typeof FilesetResolver.forVisi
   }
 }
 
-/** Завантажує моделі з локальних файлів. Спершу GPU, якщо не вдалося — CPU. */
+/** Бажаний делегат: з конфігу або, у режимі debug, з адреси ?delegate=cpu|gpu. */
+function preferredDelegate(): Delegate {
+  const params = new URLSearchParams(location.search);
+  const fromUrl = params.get('debug') === '1' ? params.get('delegate')?.toUpperCase() : undefined;
+  return fromUrl === 'CPU' || fromUrl === 'GPU' ? fromUrl : config.models.delegate;
+}
+
+/** Завантажує моделі з локальних файлів. GPU, якщо не вдалося — CPU. */
 export async function loadVisionModels(): Promise<VisionModels> {
   const started = performance.now();
   const fileset = await FilesetResolver.forVisionTasks(url(config.models.wasmPath));
-  let delegate: Delegate = 'GPU';
+  let delegate = preferredDelegate();
   let tasks: Awaited<ReturnType<typeof create>>;
   try {
-    tasks = await create(fileset, 'GPU');
+    tasks = await create(fileset, delegate);
   } catch (err) {
+    if (delegate === 'CPU') throw err;
     console.warn('GPU-делегат недоступний, перемикаємося на CPU', err);
     delegate = 'CPU';
     tasks = await create(fileset, 'CPU');

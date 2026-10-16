@@ -2,6 +2,7 @@ import { config } from '../config';
 import { buildContour, type Contour } from '../contour/contour';
 import { rasterizePolygon } from '../contour/raster';
 import { computeFrameMetrics, type FrameAnalysis } from './metrics';
+import type { FaceLandmarkerResult, PoseLandmarkerResult } from '@mediapipe/tasks-vision';
 import type { Landmark } from './geometry';
 import type { VisionModels } from './models';
 
@@ -21,6 +22,15 @@ export interface AnalysisTick extends FrameAnalysis {
   /** Фактична частота аналізу і час обробки одного тіку. */
   fps: number;
   processMs: number;
+  /** Середній час кожної стадії, мс (щоб знайти повільну модель у debug). */
+  timings: StageTimings;
+}
+
+export interface StageTimings {
+  face: number;
+  pose: number;
+  segment: number;
+  metrics: number;
 }
 
 /**
@@ -44,6 +54,10 @@ export class Analyzer {
   private sizeKey = '';
   private rafId = 0;
   private vfcId = 0;
+  private tickIndex = 0;
+  private lastPose: PoseLandmarkerResult | null = null;
+  private lastSegment: Pick<AnalysisTick, 'metrics' | 'personMask' | 'backgroundMask'> | null = null;
+  private timings: StageTimings = { face: 0, pose: 0, segment: 0, metrics: 0 };
 
   constructor(
     private readonly models: VisionModels,
@@ -108,14 +122,29 @@ export class Analyzer {
     this.contourMask = rasterizePolygon(this.contour.frame, w, h);
   }
 
+  /** Ковзне середнє часу стадії. */
+  private time<T>(stage: keyof StageTimings, fn: () => T): T {
+    const t0 = performance.now();
+    const result = fn();
+    const dt = performance.now() - t0;
+    const prev = this.timings[stage];
+    this.timings[stage] = prev ? prev * 0.8 + dt * 0.2 : dt;
+    return result;
+  }
+
   private process() {
     const started = performance.now();
     this.ensureSize();
     const { width: w, height: h } = this.canvas;
     const video = this.video;
+    const a = config.analysis;
 
-    this.ctx.drawImage(video, 0, 0, w, h);
-    const image = this.ctx.getImageData(0, 0, w, h);
+    // Модель обличчя — на кожному тіку; поза й сегментація — по черзі (config.analysis.*Every),
+    // щоб один тік не блокував сторінку надовго. Між запусками беремо останній результат.
+    const tick = this.tickIndex++;
+    const runPose = !this.lastPose || tick % a.poseEvery === 0;
+    const runSegment = !this.lastSegment || tick % a.segmentEvery === (a.segmentEvery > 1 ? 1 : 0);
+
     const lc = this.landmarkCanvas;
     this.landmarkCtx.drawImage(video, 0, 0, lc.width, lc.height);
 
@@ -124,32 +153,52 @@ export class Analyzer {
     this.lastTs = ts;
 
     // Координати точок нормалізовані (0..1), тож розмір вхідного кадру на них не впливає.
-    const faceResult = this.models.face.detectForVideo(lc, ts);
-    const poseResult = this.models.pose.detectForVideo(lc, ts);
+    const faceResult: FaceLandmarkerResult = this.time('face', () => this.models.face.detectForVideo(lc, ts));
+    if (runPose) this.lastPose = this.time('pose', () => this.models.pose.detectForVideo(lc, ts));
+    const poseResult = this.lastPose!;
 
+    let rgba = new Uint8ClampedArray(0);
     const seg: { conf: Float32Array | null } = { conf: null };
-    this.models.segmenter.segmentForVideo(this.canvas, ts, (result) => {
-      const mask = result.confidenceMasks?.[this.models.personMaskIndex];
-      if (mask && mask.width === w && mask.height === h) {
-        // Маска живе лише всередині колбека, тому копіюємо.
-        seg.conf = mask.getAsFloat32Array().slice();
-      }
-    });
+    if (runSegment) {
+      this.ctx.drawImage(video, 0, 0, w, h);
+      rgba = this.ctx.getImageData(0, 0, w, h).data;
+      this.time('segment', () =>
+        this.models.segmenter.segmentForVideo(this.canvas, ts, (result) => {
+          const mask = result.confidenceMasks?.[this.models.personMaskIndex];
+          if (mask && mask.width === w && mask.height === h) {
+            // Маска живе лише всередині колбека, тому копіюємо.
+            seg.conf = mask.getAsFloat32Array().slice();
+          }
+        }),
+      );
+    }
 
-    const analysis = computeFrameMetrics(
-      {
-        rgba: image.data,
-        width: w,
-        height: h,
-        personConfidence: seg.conf,
-        faces: faceResult.faceLandmarks,
-        faceMatrices: (faceResult.facialTransformationMatrixes ?? []).map((m) => m.data),
-        poses: poseResult.landmarks,
-        contour: this.contour!,
-        contourMask: this.contourMask!,
-      },
-      config.analysis,
+    const analysis = this.time('metrics', () =>
+      computeFrameMetrics(
+        {
+          rgba,
+          width: w,
+          height: h,
+          personConfidence: seg.conf,
+          faces: faceResult.faceLandmarks,
+          faceMatrices: (faceResult.facialTransformationMatrixes ?? []).map((m) => m.data),
+          poses: poseResult.landmarks,
+          contour: this.contour!,
+          contourMask: this.contourMask!,
+        },
+        a,
+      ),
     );
+
+    if (seg.conf) {
+      this.lastSegment = analysis;
+    } else if (this.lastSegment) {
+      // Маска й світло — з останнього запуску сегментації.
+      analysis.metrics.mask = this.lastSegment.metrics.mask;
+      analysis.metrics.light = this.lastSegment.metrics.light;
+      analysis.personMask = this.lastSegment.personMask;
+      analysis.backgroundMask = this.lastSegment.backgroundMask;
+    }
 
     this.onTick?.({
       ...analysis,
@@ -163,6 +212,7 @@ export class Analyzer {
       poseLandmarks: poseResult.landmarks,
       fps: this.fps,
       processMs: performance.now() - started,
+      timings: { ...this.timings },
     });
   }
 }

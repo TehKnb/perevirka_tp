@@ -1,4 +1,5 @@
 import { svgEl, type ContourView } from '../contour/contourView';
+import type { SetupResult } from '../checks/stability';
 import type { AnalysisTick } from '../vision/analyzer';
 import { FACE, POSE } from '../vision/geometry';
 import type { VisionModels } from '../vision/models';
@@ -18,6 +19,7 @@ export class DebugPanel {
   private table = document.createElement('table');
   private maskCanvas = document.createElement('canvas');
   private maskCtx = this.maskCanvas.getContext('2d')!;
+  private json = document.createElement('pre');
   private models: VisionModels | null = null;
 
   constructor(
@@ -30,14 +32,15 @@ export class DebugPanel {
     legend.textContent =
       'Маска: зелений — людина в контурі, червоний — людина поза контуром, синій — порожній контур, сірий — фон для оцінки.';
     this.maskCanvas.className = 'debug-mask';
-    root.replaceChildren(this.table, this.maskCanvas, legend);
+    this.json.className = 'debug-json';
+    root.replaceChildren(this.table, this.maskCanvas, legend, this.json);
   }
 
   setModels(models: VisionModels) {
     this.models = models;
   }
 
-  update(tick: AnalysisTick) {
+  update(tick: AnalysisTick, result?: SetupResult) {
     const m = tick.metrics;
     const a = m.face?.angles;
     const s = m.shoulders;
@@ -45,6 +48,10 @@ export class DebugPanel {
     const rows: [string, string][] = [
       ['FPS аналізу', f(tick.fps, 1)],
       ['Обробка кадру, мс', f(tick.processMs, 1)],
+      [
+        'Обличчя / поза / сегм. / метрики, мс',
+        `${f(tick.timings.face, 1)} / ${f(tick.timings.pose, 1)} / ${f(tick.timings.segment, 1)} / ${f(tick.timings.metrics, 1)}`,
+      ],
       ['Делегат / завантаження, мс', `${this.models?.delegate ?? '—'} / ${f(this.models?.loadMs, 0)}`],
       ['Кадр камери', `${tick.videoWidth}×${tick.videoHeight}`],
       ['Облич / поз', `${m.faces} / ${m.poses}`],
@@ -81,6 +88,7 @@ export class DebugPanel {
     );
     this.drawMask(tick);
     this.drawMarks(tick);
+    if (result) this.json.textContent = JSON.stringify(result, null, 1);
   }
 
   /** Маска людини проти контуру, у дзеркальному вигляді, як на екрані. */
