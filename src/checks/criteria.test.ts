@@ -133,6 +133,22 @@ describe('evaluateChecks', () => {
     expect(get(checks, 'bgPlain').status).toBe('fail');
   });
 
+  it('світло-сірий однотонний фон проходить, темний — ні', () => {
+    const grey = run(ctx((m) => (m.light!.bgLuma = 0.62)));
+    expect(get(grey, 'bgBright').status).toBe('pass');
+    expect(get(grey, 'bgPlain').status).toBe('pass');
+    expect(get(run(ctx((m) => (m.light!.bgLuma = 0.45))), 'bgBright').status).toBe('fail');
+  });
+
+  it('сірий, але неоднотонний фон не проходить «однотонний»', () => {
+    const checks = run(ctx((m) => {
+      m.light!.bgLuma = 0.62;
+      m.light!.bgStd = 0.15;
+    }));
+    expect(get(checks, 'bgBright').status).toBe('pass');
+    expect(get(checks, 'bgPlain').status).toBe('fail');
+  });
+
   it('обличчя темне / пересвічене, контражур', () => {
     expect(get(run(ctx((m) => (m.light!.faceLuma = 0.1))), 'faceBrightness').hint).toBe(hints.faceDark);
     expect(get(run(ctx((m) => (m.light!.faceLuma = 0.95))), 'faceBrightness').hint).toBe(hints.faceBright);
