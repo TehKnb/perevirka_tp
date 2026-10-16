@@ -3,7 +3,9 @@ import { config } from './config';
 import { isMobileDevice, readDeviceEnv } from './env';
 import { MediaManager } from './media/mediaManager';
 import { createDevicesScreen } from './screens/devicesScreen';
+import { createSetupScreen } from './screens/setupScreen';
 import { applyTexts, byId, showScreen } from './ui/dom';
+import { loadVisionModels, type VisionModels } from './vision/models';
 
 function boot() {
   applyTexts();
@@ -16,20 +18,34 @@ function boot() {
   byId('consent-notice').hidden = !config.ui.showConsentNotice;
 
   const media = new MediaManager();
-  const setupVideo = byId<HTMLVideoElement>('setup-video');
 
+  // Моделі (~10 МБ + wasm) починаємо вантажити одразу після «Почати»,
+  // поки людина дає дозвіл і обирає пристрої. Після помилки дозволяємо повторити.
+  let modelsPromise: Promise<VisionModels> | null = null;
+  const getModels = () => {
+    modelsPromise ??= loadVisionModels().catch((err) => {
+      modelsPromise = null;
+      throw err;
+    });
+    return modelsPromise;
+  };
+
+  const setup = createSetupScreen(media, getModels);
   const devices = createDevicesScreen(media, () => {
-    if (media.videoTrack) setupVideo.srcObject = new MediaStream([media.videoTrack]);
     showScreen('setup');
+    void setup.enter();
   });
 
   byId('btn-start').addEventListener('click', () => {
+    getModels().catch(() => {
+      /* помилку покаже екран налаштування */
+    });
     showScreen('devices');
     void devices.enter();
   });
 
   byId('btn-change-devices').addEventListener('click', () => {
-    setupVideo.srcObject = null;
+    setup.leave();
     showScreen('devices');
     void devices.enter();
   });

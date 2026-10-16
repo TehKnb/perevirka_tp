@@ -64,14 +64,23 @@
         </div>
       </section>
 
-      <!-- 3. Налаштування (контур і перевірки — етапи 2–3) -->
+      <!-- 3. Налаштування -->
       <section class="screen card card-wide" data-screen="setup" hidden>
         <h1 tabindex="-1" data-t="setup.title"></h1>
-        <div class="preview preview-large">
-          <video id="setup-video" class="mirrored" autoplay muted playsinline></video>
+        <div class="setup-layout">
+          <div class="stage-wrap">
+            <div class="stage" id="setup-stage">
+              <video id="setup-video" class="mirrored" autoplay muted playsinline></video>
+              <svg id="contour-svg" class="contour" aria-hidden="true" preserveAspectRatio="none"></svg>
+              <div id="setup-loading" class="stage-overlay" role="status"></div>
+            </div>
+          </div>
+          <aside class="setup-side">
+            <p class="main-hint" data-t="setup.intro"></p>
+            <button type="button" class="btn btn-secondary" id="btn-change-devices" data-t="setup.changeDevices"></button>
+          </aside>
         </div>
-        <p class="muted" data-t="setup.placeholder"></p>
-        <button type="button" class="btn btn-secondary" id="btn-change-devices" data-t="setup.changeDevices"></button>
+        <div id="debug-panel" class="debug-panel" hidden></div>
       </section>
     </main>
     <script type="module" src="/src/main.ts"></script>

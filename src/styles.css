@@ -190,10 +190,6 @@ select:focus-visible {
   display: block;
 }
 
-.preview-large {
-  margin-bottom: 16px;
-}
-
 /* Дзеркальне відображення лише для показу; кадр для скріншота не дзеркалиться. */
 .mirrored {
   transform: scaleX(-1);
@@ -223,6 +219,159 @@ select {
   background: #fff;
   color: var(--text);
   max-width: 100%;
+}
+
+/* Екран налаштування */
+.setup-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 24px;
+  align-items: start;
+}
+
+.stage-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+/* Рамка має точно співвідношення сторін камери (задається з JS),
+   тому координати SVG-контуру й кадру збігаються. */
+.stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #111;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.stage video,
+.stage .contour {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.stage video {
+  object-fit: fill;
+}
+
+.stage-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  color: #fff;
+  background: rgb(0 0 0 / 55%);
+  font-weight: 600;
+}
+
+.contour-shade {
+  fill: rgb(15 23 42 / 40%);
+}
+
+.contour-halo {
+  fill: none;
+  stroke: rgb(0 0 0 / 45%);
+  stroke-width: 10;
+  stroke-linejoin: round;
+}
+
+.contour-line {
+  fill: none;
+  stroke: var(--contour-color);
+  stroke-width: 5;
+  stroke-linejoin: round;
+  transition: stroke 0.3s;
+}
+
+.contour {
+  --contour-color: #ffffff;
+}
+
+.contour[data-state='almost'] {
+  --contour-color: #ff9f1a;
+}
+
+.contour[data-state='ok'] {
+  --contour-color: #2fd16b;
+}
+
+.main-hint {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Debug */
+.debug-panel {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+  align-items: start;
+  font: 13px/1.4 ui-monospace, Consolas, monospace;
+}
+
+.debug-panel table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.debug-panel th,
+.debug-panel td {
+  text-align: left;
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.debug-panel th {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.debug-mask {
+  width: 100%;
+  image-rendering: pixelated;
+  border-radius: 6px;
+}
+
+.debug-legend {
+  grid-column: 2;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.dbg-box {
+  fill: none;
+  stroke: #00e5ff;
+  stroke-width: 3;
+}
+
+.dbg-eye {
+  fill: #00e5ff;
+}
+
+.dbg-shoulder {
+  fill: #ffd400;
+}
+
+.dbg-extra {
+  fill: #ff3b3b;
+}
+
+@media (max-width: 900px) {
+  .setup-layout,
+  .debug-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .debug-legend {
+    grid-column: 1;
+  }
 }
 
 @media (max-width: 760px) {
