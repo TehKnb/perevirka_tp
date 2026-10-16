@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Перевірка камери та мікрофона</title>
+  </head>
+  <body>
+    <main class="page">
+      <!-- Телефон або планшет -->
+      <section class="screen card" data-screen="mobile" hidden>
+        <h1 tabindex="-1" data-t="mobile.title"></h1>
+        <p data-t="mobile.body"></p>
+      </section>
+
+      <!-- 1. Старт -->
+      <section class="screen card" data-screen="start" hidden>
+        <h1 tabindex="-1" data-t="start.title"></h1>
+        <p class="lead" data-t="start.lead"></p>
+        <ol class="steps">
+          <li data-t="start.step1"></li>
+          <li data-t="start.step2"></li>
+          <li data-t="start.step3"></li>
+          <li data-t="start.step4"></li>
+        </ol>
+        <p class="notice" id="consent-notice" data-t="start.notice"></p>
+        <button type="button" class="btn btn-primary" id="btn-start" data-t="start.begin"></button>
+      </section>
+
+      <!-- 2. Доступ до пристроїв -->
+      <section class="screen card" data-screen="devices" hidden>
+        <h1 tabindex="-1" data-t="devices.title"></h1>
+
+        <p id="devices-pending" class="pending" data-t="devices.pending"></p>
+
+        <div id="devices-error" class="alert alert-error" role="alert" hidden>
+          <h2 id="devices-error-title"></h2>
+          <p id="devices-error-body"></p>
+          <button type="button" class="btn btn-primary" id="btn-devices-retry" data-t="devices.retry"></button>
+        </div>
+
+        <div id="devices-ready" class="devices-layout" hidden>
+          <div class="preview">
+            <video id="devices-video" class="mirrored" autoplay muted playsinline></video>
+          </div>
+          <div class="devices-form">
+            <label class="field">
+              <span data-t="devices.camera"></span>
+              <select id="select-camera"></select>
+            </label>
+            <p id="camera-status" class="status" aria-live="polite"></p>
+
+            <label class="field">
+              <span data-t="devices.microphone"></span>
+              <select id="select-mic"></select>
+            </label>
+            <p id="mic-status" class="status" aria-live="polite"></p>
+
+            <div id="switch-error" class="alert alert-error" role="alert" hidden></div>
+
+            <button type="button" class="btn btn-primary" id="btn-devices-next" data-t="devices.next"></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Налаштування (контур і перевірки — етапи 2–3) -->
+      <section class="screen card card-wide" data-screen="setup" hidden>
+        <h1 tabindex="-1" data-t="setup.title"></h1>
+        <div class="preview preview-large">
+          <video id="setup-video" class="mirrored" autoplay muted playsinline></video>
+        </div>
+        <p class="muted" data-t="setup.placeholder"></p>
+        <button type="button" class="btn btn-secondary" id="btn-change-devices" data-t="setup.changeDevices"></button>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

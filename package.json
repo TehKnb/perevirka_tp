@@ -1,0 +1,19 @@
+{
+  "name": "camera-voice-check",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Лендінг перевірки налаштування камери та запису голосу",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  }
+}

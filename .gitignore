@@ -1,0 +1,8 @@
+node_modules/
+dist/
+submissions/
+# Моделі MediaPipe і wasm завантажуються скриптом, у git не зберігаємо
+public/models/
+public/mediapipe/
+*.log
+.DS_Store
