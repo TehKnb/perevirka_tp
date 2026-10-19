@@ -3,6 +3,7 @@ import type { SetupResult } from '../checks/stability';
 import type { AnalysisTick } from '../vision/analyzer';
 import { FACE, POSE } from '../vision/geometry';
 import type { VisionModels } from '../vision/models';
+import { flattenMetrics, formatSnapshot, type Sample } from './snapshot';
 
 /** Режим підбору порогів: сторінку відкрито з ?debug=1. */
 export const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
@@ -10,6 +11,39 @@ export const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 const f = (v: number | undefined | null, digits = 2) =>
   v === undefined || v === null || !Number.isFinite(v) ? '—' : v.toFixed(digits);
 const yesNo = (v: boolean | undefined) => (v === undefined ? '—' : v ? 'так' : 'ні');
+
+/** Скільки мілісекунд збирати кадри для одного заміру. */
+const SNAPSHOT_MS = 3000;
+
+/** Сценарії калібрування: змінюйте одну умову за раз. */
+const SCENARIOS = [
+  '1. Еталон: усе налаштовано правильно',
+  '2а. Камера знизу',
+  '2б. Камера зверху',
+  '3а. Задто близько',
+  '3б. Задто далеко',
+  '4а. Зсув ліворуч',
+  '4б. Зсув праворуч',
+  '5. Лише настільна лампа збоку',
+  '6. Яскраве світло позаду',
+  '7. Фон із предметами',
+  '8а. Тепле (жовте) світло',
+  '8б. Холодне (біле) світло',
+  '9. Друга людина в кадрі',
+  'Інше',
+];
+
+/** Звідки брати назви пристроїв для заміру. */
+export interface SnapshotContext {
+  camera(): string;
+  microphone(): string;
+}
+
+interface Collecting {
+  started: number;
+  samples: Sample[];
+  results: SetupResult[];
+}
 
 /**
  * Панель метрик для підбору порогів: числа, маска людини проти контуру
@@ -21,6 +55,13 @@ export class DebugPanel {
   private maskCtx = this.maskCanvas.getContext('2d')!;
   private json = document.createElement('pre');
   private models: VisionModels | null = null;
+  private context: SnapshotContext | null = null;
+  private collecting: Collecting | null = null;
+  private scenario = document.createElement('select');
+  private note = document.createElement('input');
+  private copyButton = document.createElement('button');
+  private copyStatus = document.createElement('span');
+  private output = document.createElement('textarea');
 
   constructor(
     root: HTMLElement,
@@ -33,11 +74,101 @@ export class DebugPanel {
       'Маска: зелений — людина в контурі, червоний — людина поза контуром, синій — порожній контур, сірий — фон для оцінки.';
     this.maskCanvas.className = 'debug-mask';
     this.json.className = 'debug-json';
-    root.replaceChildren(this.table, this.maskCanvas, legend, this.json);
+    root.replaceChildren(this.buildSnapshotControls(), this.table, this.maskCanvas, legend, this.json);
   }
 
   setModels(models: VisionModels) {
     this.models = models;
+  }
+
+  setContext(context: SnapshotContext) {
+    this.context = context;
+  }
+
+  /** Блок «Скопіювати замір»: сценарій, примітка, кнопка, текст для ручного копіювання. */
+  private buildSnapshotControls(): HTMLElement {
+    const box = document.createElement('div');
+    box.className = 'debug-snapshot';
+    const label = (text: string, control: HTMLElement) => {
+      const el = document.createElement('label');
+      const span = document.createElement('span');
+      span.textContent = text;
+      el.append(span, control);
+      return el;
+    };
+    this.scenario.replaceChildren(
+      ...SCENARIOS.map((name) => {
+        const option = document.createElement('option');
+        option.value = option.textContent = name;
+        return option;
+      }),
+    );
+    this.note.type = 'text';
+    this.note.placeholder = 'що саме зробили (необов’язково)';
+    this.copyButton.type = 'button';
+    this.copyButton.className = 'btn btn-primary';
+    this.copyButton.textContent = 'Скопіювати замір (3 с)';
+    this.copyButton.addEventListener('click', () => this.startSnapshot());
+    this.copyStatus.className = 'debug-snapshot-status';
+    this.copyStatus.setAttribute('role', 'status');
+    this.output.readOnly = true;
+    this.output.rows = 8;
+    this.output.hidden = true;
+    this.output.setAttribute('aria-label', 'Текст заміру');
+    const row = document.createElement('div');
+    row.className = 'debug-snapshot-row';
+    row.append(label('Сценарій', this.scenario), label('Примітка', this.note), this.copyButton, this.copyStatus);
+    box.append(row, this.output);
+    return box;
+  }
+
+  private startSnapshot() {
+    if (this.collecting) return;
+    this.collecting = { started: performance.now(), samples: [], results: [] };
+    this.copyButton.disabled = true;
+    this.copyStatus.textContent = 'Не рухайтеся, збираю показники…';
+  }
+
+  private collect(tick: AnalysisTick, result: SetupResult | undefined) {
+    const c = this.collecting;
+    if (!c) return;
+    c.samples.push(flattenMetrics(tick.metrics, tick));
+    if (result) c.results.push(result);
+    const elapsed = performance.now() - c.started;
+    if (elapsed < SNAPSHOT_MS) {
+      this.copyStatus.textContent = `Не рухайтеся, збираю показники… ${Math.ceil((SNAPSHOT_MS - elapsed) / 1000)} с`;
+      return;
+    }
+    this.collecting = null;
+    const text = formatSnapshot(
+      {
+        scenario: this.scenario.value,
+        note: this.note.value.trim(),
+        durationMs: elapsed,
+        camera: `${this.context?.camera() ?? '—'}, кадр ${tick.videoWidth}×${tick.videoHeight}`,
+        microphone: this.context?.microphone() ?? '—',
+        delegate: this.models?.delegate ?? '—',
+        browser: navigator.userAgent,
+      },
+      c.samples,
+      c.results,
+    );
+    void this.deliver(text);
+  }
+
+  /** Копіює в буфер обміну; якщо браузер не дозволив — показує текст для ручного копіювання. */
+  private async deliver(text: string) {
+    this.output.value = text;
+    this.output.hidden = false;
+    this.copyButton.disabled = false;
+    try {
+      await navigator.clipboard.writeText(text);
+      this.copyStatus.textContent = 'Скопійовано ✓ Вставте в чат (Ctrl+V).';
+    } catch {
+      this.output.focus();
+      this.output.select();
+      this.copyStatus.textContent = 'Не вдалося скопіювати автоматично: текст виділено, натисніть Ctrl+C.';
+    }
   }
 
   update(tick: AnalysisTick, result?: SetupResult) {
@@ -89,6 +220,7 @@ export class DebugPanel {
     this.drawMask(tick);
     this.drawMarks(tick);
     if (result) this.json.textContent = JSON.stringify(result, null, 1);
+    this.collect(tick, result);
   }
 
   /** Маска людини проти контуру, у дзеркальному вигляді, як на екрані. */

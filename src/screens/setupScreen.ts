@@ -30,6 +30,10 @@ export function createSetupScreen(
   const checklist = byId('checklist');
   const view = new ContourView(byId('contour-svg') as unknown as SVGSVGElement);
   const debug = DEBUG ? new DebugPanel(byId('debug-panel'), view) : null;
+  debug?.setContext({
+    camera: () => media.videoLabel || '—',
+    microphone: () => `${media.audioLabel || '—'} (${classifyMicLabel(media.audioLabel)})`,
+  });
 
   // Пункти чекліста створюємо один раз, далі лише оновлюємо стан.
   const items = new Map<CheckId, HTMLLIElement>();
