@@ -47,7 +47,7 @@ function ctx(patch: (m: FrameMetrics) => void = () => {}, extra: Partial<CheckCo
     camera: { width: 1920, height: 1080 },
     micKind: 'headset',
     headsetVisual: 'unknown',
-    network: { status: 'done', result: { downloadMbps: 50, uploadMbps: 20, pingMs: 20, connection: null } },
+    network: { status: 'done', result: { downloadMbps: 50, uploadMbps: 20, pingMs: 20, server: 'cloudflare', connection: null } },
     ...extra,
   };
 }
@@ -170,7 +170,7 @@ describe('evaluateChecks', () => {
     expect(get(run(ctx(undefined, { network: { status: 'checking' } })), 'internet').status).toBe('pending');
     expect(get(run(ctx(undefined, { network: { status: 'error' } })), 'internet').hint).toBe(hints.internetFailed);
     const slow = get(
-      run(ctx(undefined, { network: { status: 'done', result: { downloadMbps: 50, uploadMbps: 4, pingMs: 30, connection: null } } })),
+      run(ctx(undefined, { network: { status: 'done', result: { downloadMbps: 50, uploadMbps: 4, pingMs: 30, server: 'cloudflare', connection: null } } })),
       'internet',
     );
     expect(slow.status).toBe('fail');

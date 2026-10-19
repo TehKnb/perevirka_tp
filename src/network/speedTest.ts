@@ -4,7 +4,10 @@ import type { AppConfig } from '../config';
 export interface SpeedResult {
   downloadMbps: number;
   uploadMbps: number;
+  /** Лише для метаданих: на проходження не впливає. */
   pingMs: number;
+  /** Звідки міряли. */
+  server: SpeedServer['name'];
   /** navigator.connection (лише Chromium): грубі оцінки браузера, для метаданих. */
   connection: { effectiveType?: string; downlink?: number; rtt?: number; type?: string } | null;
 }
@@ -15,6 +18,28 @@ export type NetworkState =
   | { status: 'error' };
 
 type NetworkConfig = AppConfig['network'];
+
+/** Сервер для тесту: адреси повні (абсолютні), щоб працювали й у Web Worker. */
+export interface SpeedServer {
+  name: 'cloudflare' | 'own';
+  downloadUrl: string;
+  uploadUrl: string;
+  pingUrl: string;
+}
+
+/** Сервери в порядку спроб: спершу Cloudflare, потім наш (запасний). */
+export function speedServers(c: NetworkConfig, siteBase: string): SpeedServer[] {
+  const own = (path: string) => new URL(path, siteBase).href;
+  return [
+    { name: 'cloudflare', ...c.cloudflare },
+    {
+      name: 'own',
+      downloadUrl: own(c.downloadPath),
+      uploadUrl: own(c.uploadEndpoint),
+      pingUrl: own(c.pingPath),
+    },
+  ];
+}
 
 /** Мбіт/с з байтів і мілісекунд. */
 export function mbps(bytes: number, ms: number): number {
@@ -28,14 +53,13 @@ export function median(values: number[]): number {
   return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
 }
 
-export type SpeedProblem = 'download' | 'upload' | 'ping';
+export type SpeedProblem = 'download' | 'upload';
 
-/** Які показники не дотягують до формату. */
+/** Які показники не дотягують до формату (пінг не перевіряється). */
 export function speedProblems(r: SpeedResult, c: NetworkConfig): SpeedProblem[] {
   const out: SpeedProblem[] = [];
   if (!(r.downloadMbps >= c.minDownloadMbps)) out.push('download');
   if (!(r.uploadMbps >= c.minUploadMbps)) out.push('upload');
-  if (!(r.pingMs <= c.maxPingMs)) out.push('ping');
   return out;
 }
 
@@ -48,23 +72,28 @@ export function steadyMbps(bytesAtGrace: number, bytesTotal: number, graceMs: nu
   return mbps(bytesTotal - bytesAtGrace, elapsedMs - graceMs);
 }
 
+/** Додає до адреси випадковий параметр, щоб обійти кеш. */
+export function withBust(url: string): string {
+  return `${url}${url.includes('?') ? '&' : '?'}r=${Math.random().toString(36).slice(2)}`;
+}
+
 // ---------------------------------------------------------------------------
-// Вимірювання в браузері (не чисті функції)
+// Вимірювання (працює і в основному потоці, і в Web Worker)
 // ---------------------------------------------------------------------------
 
 const GRACE_MS = 600;
-const base = () => import.meta.env.BASE_URL;
-const bust = (path: string) => `${base()}${path}?r=${Math.random().toString(36).slice(2)}`;
 
 /** Пінг: медіана часу від запиту до першого байта відповіді (перший запит — прогрів, не рахуємо). */
-async function measurePing(c: NetworkConfig): Promise<number> {
+async function measurePing(s: SpeedServer, c: NetworkConfig): Promise<number> {
   const samples: number[] = [];
   for (let i = 0; i <= c.pingSamples; i++) {
-    const url = new URL(bust(c.pingPath), location.href).href;
+    const url = withBust(s.pingUrl);
     const t0 = performance.now();
     const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`ping HTTP ${res.status}`);
     await res.arrayBuffer();
     const total = performance.now() - t0;
+    // Для чужого домену браузер без Timing-Allow-Origin дає нулі — тоді беремо повний час запиту.
     const entry = performance.getEntriesByName(url).at(-1) as PerformanceResourceTiming | undefined;
     const rtt = entry && entry.responseStart > 0 && entry.requestStart > 0 ? entry.responseStart - entry.requestStart : total;
     if (i > 0) samples.push(rtt);
@@ -73,7 +102,7 @@ async function measurePing(c: NetworkConfig): Promise<number> {
 }
 
 /** Завантаження: кілька паралельних потоків читають файл до дедлайну. */
-async function measureDownload(c: NetworkConfig): Promise<number> {
+async function measureDownload(s: SpeedServer, c: NetworkConfig): Promise<number> {
   const controller = new AbortController();
   let bytes = 0;
   let bytesAtGrace = 0;
@@ -84,9 +113,9 @@ async function measureDownload(c: NetworkConfig): Promise<number> {
 
   const worker = async () => {
     while (performance.now() < deadline) {
-      const res = await fetch(bust(c.downloadPath), { cache: 'no-store', signal: controller.signal });
+      const res = await fetch(withBust(s.downloadUrl), { cache: 'no-store', signal: controller.signal });
       if (!res.ok || !res.body) throw new Error(`download HTTP ${res.status}`);
-      const reader = res.body!.getReader();
+      const reader = res.body.getReader();
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -113,13 +142,13 @@ function randomPayload(size: number): Blob {
 }
 
 /** Віддача: XHR дає прогрес по байтах, тож рахуємо й недовантажені шматки. */
-async function measureUpload(c: NetworkConfig): Promise<number> {
+async function measureUpload(s: SpeedServer, c: NetworkConfig): Promise<number> {
   const payload = randomPayload(c.uploadChunkBytes);
   const started = performance.now();
   const deadline = started + c.testSeconds * 1000;
   const loaded = new Array<number>(c.parallel).fill(0);
   const done = new Array<number>(c.parallel).fill(0);
-  const total = () => loaded.reduce((s, v, i) => s + v + done[i]!, 0);
+  const total = () => loaded.reduce((sum, v, i) => sum + v + done[i]!, 0);
   let bytesAtGrace = 0;
   const graceTimer = setTimeout(() => (bytesAtGrace = total()), GRACE_MS);
   const active = new Set<XMLHttpRequest>();
@@ -129,7 +158,7 @@ async function measureUpload(c: NetworkConfig): Promise<number> {
     new Promise<void>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       active.add(xhr);
-      xhr.open('POST', `${c.uploadEndpoint}?r=${Math.random().toString(36).slice(2)}`);
+      xhr.open('POST', withBust(s.uploadUrl));
       xhr.upload.onprogress = (e) => (loaded[i] = e.loaded);
       const finish = (ok: boolean) => {
         active.delete(xhr);
@@ -145,7 +174,13 @@ async function measureUpload(c: NetworkConfig): Promise<number> {
           reject(new Error(`upload HTTP ${xhr.status}`));
         }
       };
-      xhr.onerror = () => finish(false);
+      // Помилка мережі до першого байта — сервер недоступний; інакше рахуємо відправлене.
+      xhr.onerror = () => {
+        if (total() === 0) {
+          active.delete(xhr);
+          reject(new Error('upload network error'));
+        } else finish(false);
+      };
       xhr.onabort = () => finish(false);
       xhr.send(payload);
     });
@@ -176,20 +211,40 @@ export type SpeedPhase = 'ping' | 'download' | 'upload';
 /** Проміжний стан тесту: яка фаза йде і які числа вже виміряно. */
 export interface SpeedProgress {
   phase: SpeedPhase;
-  pingMs?: number;
   downloadMbps?: number;
 }
 
-/** Повний тест: пінг, завантаження, віддача (послідовно, щоб не заважали одне одному). */
-export async function runSpeedTest(
+async function runOn(
+  s: SpeedServer,
   c: NetworkConfig,
   onProgress?: (progress: SpeedProgress) => void,
 ): Promise<SpeedResult> {
   onProgress?.({ phase: 'ping' });
-  const pingMs = await measurePing(c);
-  onProgress?.({ phase: 'download', pingMs });
-  const downloadMbps = await measureDownload(c);
-  onProgress?.({ phase: 'upload', pingMs, downloadMbps });
-  const uploadMbps = await measureUpload(c);
-  return { downloadMbps, uploadMbps, pingMs, connection: connectionInfo() };
+  const pingMs = await measurePing(s, c);
+  onProgress?.({ phase: 'download' });
+  const downloadMbps = await measureDownload(s, c);
+  onProgress?.({ phase: 'upload', downloadMbps });
+  const uploadMbps = await measureUpload(s, c);
+  return { downloadMbps, uploadMbps, pingMs, server: s.name, connection: connectionInfo() };
+}
+
+/**
+ * Повний тест: пінг, завантаження, віддача (послідовно, щоб не заважали одне одному).
+ * Якщо перший сервер недоступний (помилка мережі чи HTTP) — пробуємо наступний.
+ */
+export async function runSpeedTestOn(
+  servers: SpeedServer[],
+  c: NetworkConfig,
+  onProgress?: (progress: SpeedProgress) => void,
+): Promise<SpeedResult> {
+  let lastError: unknown = new Error('no servers');
+  for (const s of servers) {
+    try {
+      return await runOn(s, c, onProgress);
+    } catch (err) {
+      console.warn(`Тест інтернету через ${s.name} не вдався`, err);
+      lastError = err;
+    }
+  }
+  throw lastError;
 }

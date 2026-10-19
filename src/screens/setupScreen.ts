@@ -7,7 +7,8 @@ import { ContourView } from '../contour/contourView';
 import { DEBUG, DebugPanel } from '../debug/debugPanel';
 import { classifyMicLabel } from '../media/micClassify';
 import type { MediaManager } from '../media/mediaManager';
-import { runSpeedTest, type NetworkState } from '../network/speedTest';
+import { runSpeedTest } from '../network/runSpeedTest';
+import type { NetworkState } from '../network/speedTest';
 import { checkLabels, hints, t } from '../texts';
 import { createCaptureControls } from './captureControls';
 import { createNetworkPanel } from './networkPanel';
@@ -66,7 +67,7 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
   async function testNetwork() {
     network = { status: 'checking' };
     try {
-      network = { status: 'done', result: await runSpeedTest(config.network, (p) => netPanel.progress(p)) };
+      network = { status: 'done', result: await runSpeedTest((p) => netPanel.progress(p)) };
     } catch (err) {
       console.error('Не вдалося перевірити інтернет', err);
       network = { status: 'error' };

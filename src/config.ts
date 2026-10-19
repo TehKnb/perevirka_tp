@@ -244,27 +244,40 @@ export const config = {
     maxBgRedBlue: 1.15,
   },
 
-  /** Перевірка інтернету (жорсткий критерій). Тест іде до нашого ж сервера. */
+  /**
+   * Перевірка інтернету (жорсткий критерій): завантаження й віддача.
+   * Пінг міряється лише для метаданих експертам і на проходження не впливає.
+   */
   network: {
     /** Мінімальна швидкість завантаження, Мбіт/с. */
     minDownloadMbps: 20,
     /** Мінімальна швидкість віддачі (upload), Мбіт/с. */
     minUploadMbps: 10,
-    /** Максимальний пінг (затримка відповіді сервера), мс. */
-    maxPingMs: 50,
     /** Скільки секунд міряти завантаження й віддачу (кожне). */
     testSeconds: 4,
     /** Скільки паралельних з'єднань (як у speedtest-сервісів: одне з'єднання недооцінює канал). */
     parallel: 4,
-    /** Скільки разів міряти пінг (береться медіана). */
+    /** Скільки разів міряти пінг (береться медіана; лише для метаданих). */
     pingSamples: 8,
-    /** Файли й адреса тесту (файли створює `npm run fetch-models`, ендпоінт — api/speedtest-upload). */
-    /** .jpg, щоб Vercel не стискав файл на льоту (див. scripts/fetch-models.mjs). */
+    /** Розмір одного шматка для віддачі, байт. */
+    uploadChunkBytes: 2 * 1024 * 1024,
+    /**
+     * Основне джерело — сервери Cloudflare speed test (ті самі, що на speed.cloudflare.com):
+     * вузли є в Україні, тож швидкість близька до speedtest.net. Через Vercel виходило в 3–4 рази менше.
+     * Передаються лише випадкові байти, жодних даних людини.
+     */
+    cloudflare: {
+      downloadUrl: 'https://speed.cloudflare.com/__down?bytes=25000000',
+      uploadUrl: 'https://speed.cloudflare.com/__up',
+      pingUrl: 'https://speed.cloudflare.com/__down?bytes=0',
+    },
+    /**
+     * Запасне джерело — наш сервер (якщо Cloudflare недоступний). Файли створює `npm run fetch-models`,
+     * ендпоінт — api/speedtest-upload. .jpg — щоб Vercel не стискав файл на льоту.
+     */
     downloadPath: 'speedtest/download.jpg',
     pingPath: 'speedtest/ping.txt',
     uploadEndpoint: '/api/speedtest-upload',
-    /** Розмір одного шматка для віддачі, байт (менше ліміту тіла запиту функції Vercel 4.5 МБ). */
-    uploadChunkBytes: 2 * 1024 * 1024,
   },
 
   stability: {

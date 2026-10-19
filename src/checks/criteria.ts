@@ -195,7 +195,7 @@ export function evaluateChecks(ctx: CheckContext, c: Criteria, cam: CameraLimits
   else if (n.status === 'error') add('internet', 'hard', 'fail', null, hints.internetFailed);
   else {
     const r = n.result;
-    const value = `${r.downloadMbps.toFixed(1)}/${r.uploadMbps.toFixed(1)} Мбіт/с, ${r.pingMs.toFixed(0)} мс`;
+    const value = `${r.downloadMbps.toFixed(1)}/${r.uploadMbps.toFixed(1)} Мбіт/с (пінг ${r.pingMs.toFixed(0)} мс, ${r.server})`;
     const ok = speedProblems(r, net).length === 0;
     add('internet', 'hard', ok ? 'pass' : 'fail', value, internetSlowHint(r));
   }

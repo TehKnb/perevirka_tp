@@ -57,18 +57,14 @@ export const t = {
     netTitle: 'Швидкість інтернету',
     netDownload: 'Завантаження',
     netUpload: 'Віддача',
-    netPing: 'Пінг',
     netWaiting: 'Перевірка почнеться, щойно все буде готово.',
-    netPhasePing: 'Міряємо пінг…',
     netPhaseDownload: 'Міряємо швидкість завантаження…',
     netPhaseUpload: 'Міряємо швидкість віддачі…',
     netOk: 'Інтернет підходить.',
     netSlow: 'Інтернет надто повільний. Підключіться до швидшої мережі (краще кабель) і перевірте ще раз.',
     netError: 'Не вдалося перевірити інтернет. Перевірте підключення й спробуйте ще раз.',
     netNeedMin: (v: number, unit: string) => `(потрібно від ${v} ${unit})`,
-    netNeedMax: (v: number, unit: string) => `(потрібно до ${v} ${unit})`,
     mbps: 'Мбіт/с',
-    ms: 'мс',
     reminder: 'Зашторте вікна: потрібне лише штучне світло.',
     loading: 'Готуємо перевірку…',
     loadError: 'Не вдалося підготувати перевірку. Оновіть сторінку. Якщо не допоможе — відкрийте її в іншому браузері.',
@@ -143,10 +139,10 @@ export const hints = {
 } as const;
 
 /** Підказка про повільний інтернет із виміряними числами. */
-export function internetSlowHint(r: { downloadMbps: number; uploadMbps: number; pingMs: number }): string {
+export function internetSlowHint(r: { downloadMbps: number; uploadMbps: number }): string {
   return (
-    `Інтернет повільний: завантаження ${r.downloadMbps.toFixed(0)}, віддача ${r.uploadMbps.toFixed(0)} Мбіт/с, ` +
-    `пінг ${r.pingMs.toFixed(0)} мс. Підключіться до швидшої мережі (краще кабель) і перевірте ще раз.`
+    `Інтернет повільний: завантаження ${r.downloadMbps.toFixed(0)}, віддача ${r.uploadMbps.toFixed(0)} Мбіт/с. ` +
+    `Підключіться до швидшої мережі (краще кабель) і перевірте ще раз.`
   );
 }
 
