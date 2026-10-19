@@ -73,9 +73,11 @@ const SPEEDTEST_BYTES = 16 * 1024 * 1024;
 async function makeSpeedtestFiles() {
   const dir = join(root, 'public', 'speedtest');
   await mkdir(dir, { recursive: true });
-  const download = join(dir, 'download.bin');
+  // Розширення .jpg — щоб хостинг (Vercel) не стискав файл на льоту: він стискає
+  // application/octet-stream, а на випадкових байтах це лише гальмує віддачу (вимірювали: 4–5 Мбіт/с
+  // замість 19–36 з нестиснутого джерела). Картинки Vercel не стискає. Вміст — просто випадкові байти.
+  const download = join(dir, 'download.jpg');
   if (force || !(await exists(download))) {
-    // Випадкові байти не стискаються, тож сервер не «прискорить» тест компресією.
     await writeFile(download, randomBytes(SPEEDTEST_BYTES));
   }
   await writeFile(join(dir, 'ping.txt'), 'ok');

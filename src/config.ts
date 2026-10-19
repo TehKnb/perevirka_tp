@@ -259,7 +259,8 @@ export const config = {
     /** Скільки разів міряти пінг (береться медіана). */
     pingSamples: 8,
     /** Файли й адреса тесту (файли створює `npm run fetch-models`, ендпоінт — api/speedtest-upload). */
-    downloadPath: 'speedtest/download.bin',
+    /** .jpg, щоб Vercel не стискав файл на льоту (див. scripts/fetch-models.mjs). */
+    downloadPath: 'speedtest/download.jpg',
     pingPath: 'speedtest/ping.txt',
     uploadEndpoint: '/api/speedtest-upload',
     /** Розмір одного шматка для віддачі, байт (менше ліміту тіла запиту функції Vercel 4.5 МБ). */

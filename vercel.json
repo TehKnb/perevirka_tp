@@ -14,6 +14,10 @@
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
     },
     {
+      "source": "/speedtest/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate, no-transform" }]
+    },
+    {
       "source": "/mediapipe/(.*)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
     },
