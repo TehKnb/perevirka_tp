@@ -1,6 +1,8 @@
 import type { AppConfig } from '../config';
 import type { MicKind } from '../media/micClassify';
-import { hints } from '../texts';
+import type { NetworkState } from '../network/speedTest';
+import { speedProblems } from '../network/speedTest';
+import { hints, internetSlowHint } from '../texts';
 import type { FrameMetrics } from '../vision/metrics';
 import type { HeadsetVisualResult } from './headsetVisual';
 import { checkResolution } from './resolution';
@@ -15,19 +17,25 @@ export type CheckId =
   | 'shoulders'
   | 'fit'
   | 'faceBrightness'
+  | 'lowLight'
   | 'lightEven'
   | 'backlight'
   | 'bgBright'
+  | 'bgNeutral'
   | 'bgPlain'
+  | 'internet'
   | 'bgObjects'
-  | 'daylight'
   | 'coldLight'
   | 'headset';
 
 export type Severity = 'hard' | 'soft';
 
-/** Результат критерію на одному кадрі, до згладжування. 'unknown' — немає даних (рахується як провал). */
-export type RawStatus = 'pass' | 'fail' | 'unknown';
+/**
+ * Результат критерію на одному кадрі, до згладжування.
+ * 'unknown' — немає даних (жорсткий рахується як провал);
+ * 'pending' — перевірка ще триває (наприклад, тест інтернету): не провал, але й не виконано.
+ */
+export type RawStatus = 'pass' | 'fail' | 'unknown' | 'pending';
 
 export interface RawCheck {
   id: CheckId;
@@ -41,18 +49,20 @@ export interface RawCheck {
 export interface CheckContext {
   metrics: FrameMetrics;
   /** track.getSettings() камери. */
-  camera: { width?: number; height?: number };
+  camera: { width?: number; height?: number; frameRate?: number };
   micKind: MicKind;
   headsetVisual: HeadsetVisualResult;
+  network: NetworkState;
 }
 
 type Criteria = AppConfig['criteria'];
 type CameraLimits = AppConfig['camera'];
+type NetworkLimits = AppConfig['network'];
 
 /**
  * Порядок пріоритету підказок: немає обличчя → відстань → по центру → висота камери й нахил →
- * плечі → світло → фон → м'які. Роздільність камери й «одна людина» — на самому початку,
- * бо без них решта підказок не має сенсу.
+ * плечі → світло → фон → інтернет → м'які. Роздільність камери й «одна людина» — на самому початку,
+ * бо без них решта підказок не має сенсу. Інтернет — після всього, що людина виправляє перед камерою.
  */
 export const CHECK_ORDER: readonly CheckId[] = [
   'resolution',
@@ -64,12 +74,14 @@ export const CHECK_ORDER: readonly CheckId[] = [
   'shoulders',
   'fit',
   'faceBrightness',
+  'lowLight',
   'lightEven',
   'backlight',
   'bgBright',
+  'bgNeutral',
   'bgPlain',
+  'internet',
   'bgObjects',
-  'daylight',
   'coldLight',
   'headset',
 ];
@@ -82,7 +94,7 @@ export function pitchDeviation(pitch: number, c: Criteria): number {
 }
 
 /** Обчислює всі критерії на одному кадрі. Чиста функція. */
-export function evaluateChecks(ctx: CheckContext, c: Criteria, cam: CameraLimits): RawCheck[] {
+export function evaluateChecks(ctx: CheckContext, c: Criteria, cam: CameraLimits, net: NetworkLimits): RawCheck[] {
   const m = ctx.metrics;
   const face = m.face;
   const light = m.light;
@@ -143,6 +155,7 @@ export function evaluateChecks(ctx: CheckContext, c: Criteria, cam: CameraLimits
   // Світло
   if (!face || !light) {
     add('faceBrightness', 'hard', 'unknown', null, hints.noFace);
+    add('lowLight', 'hard', 'unknown', null, hints.noFace);
     add('lightEven', 'hard', 'unknown', null, hints.noFace);
     add('backlight', 'hard', 'unknown', null, hints.noFace);
   } else {
@@ -150,6 +163,12 @@ export function evaluateChecks(ctx: CheckContext, c: Criteria, cam: CameraLimits
     if (light.faceLuma < c.faceLumaMin) add('faceBrightness', 'hard', 'fail', fl, hints.faceDark);
     else if (light.faceLuma > c.faceLumaMax) add('faceBrightness', 'hard', 'fail', fl, hints.faceBright);
     else add('faceBrightness', 'hard', 'pass', fl, null);
+    // Мало світла: зерно на фоні або камера сама знизила частоту кадрів.
+    const noisy = light.bgNoise > c.maxBgNoise;
+    // Якщо камера й так налаштована на низьку частоту (frameRate у getSettings), ця ознака нічого не каже.
+    const nominalOk = ctx.camera.frameRate === undefined || ctx.camera.frameRate >= c.minCameraFps;
+    const slowCamera = nominalOk && m.cameraFps !== null && m.cameraFps < c.minCameraFps;
+    add('lowLight', 'hard', noisy || slowCamera ? 'fail' : 'pass', round(light.bgNoise, 4), hints.lowLight);
     add('lightEven', 'hard', light.faceSideDiff <= c.maxFaceSideDiff ? 'pass' : 'fail', round(light.faceSideDiff), hints.lightSide);
     add('backlight', 'hard', light.bgToFace <= c.maxBgToFace ? 'pass' : 'fail', round(light.bgToFace), hints.backlight);
   }
@@ -157,17 +176,28 @@ export function evaluateChecks(ctx: CheckContext, c: Criteria, cam: CameraLimits
   // Фон
   if (!light || light.bgArea < c.minBgArea) {
     add('bgBright', 'hard', 'unknown', null, hints.fit);
+    add('bgNeutral', 'hard', 'unknown', null, hints.fit);
     add('bgPlain', 'hard', 'unknown', null, hints.fit);
     add('bgObjects', 'soft', 'unknown', null, null);
-    add('daylight', 'soft', 'unknown', null, null);
     add('coldLight', 'soft', 'unknown', null, null);
   } else {
     add('bgBright', 'hard', light.bgLuma >= c.minBgLuma ? 'pass' : 'fail', round(light.bgLuma), hints.bgDark);
+    add('bgNeutral', 'hard', light.bgChroma <= c.maxBgChroma ? 'pass' : 'fail', round(light.bgChroma), hints.bgTint);
     const plain = light.bgStd <= c.maxBgStd && light.bgEdgeDensity <= c.maxBgEdgeDensity;
     add('bgPlain', 'hard', plain ? 'pass' : 'fail', round(light.bgStd), hints.bgPlain);
     add('bgObjects', 'soft', light.bgBusyBlocks <= c.maxBusyBlocks ? 'pass' : 'fail', round(light.bgBusyBlocks), hints.bgObjects);
-    add('daylight', 'soft', light.bgOverexposed <= c.maxOverexposed ? 'pass' : 'fail', round(light.bgOverexposed), hints.daylight);
     add('coldLight', 'soft', light.bgRedBlue <= c.maxBgRedBlue ? 'pass' : 'fail', round(light.bgRedBlue), hints.coldLight);
+  }
+
+  // Інтернет
+  const n = ctx.network;
+  if (n.status === 'checking') add('internet', 'hard', 'pending', null, hints.internetChecking);
+  else if (n.status === 'error') add('internet', 'hard', 'fail', null, hints.internetFailed);
+  else {
+    const r = n.result;
+    const value = `${r.downloadMbps.toFixed(1)}/${r.uploadMbps.toFixed(1)} Мбіт/с, ${r.pingMs.toFixed(0)} мс`;
+    const ok = speedProblems(r, net).length === 0;
+    add('internet', 'hard', ok ? 'pass' : 'fail', value, internetSlowHint(r));
   }
 
   // Гарнітура: лише за назвою мікрофона; 'unknown' не блокує й не підказує.

@@ -6,7 +6,9 @@ import {
   fractionAbove,
   insetRect,
   lumaPlane,
+  meanChroma,
   meanStd,
+  noiseLevel,
   rectMask,
   redBlueRatio,
   sobelEdges,
@@ -99,6 +101,27 @@ describe('redBlueRatio', () => {
   it('тепле світло > 1, холодне < 1', () => {
     expect(redBlueRatio(image(2, 1, () => [200, 150, 100]), all(2))).toBe(2);
     expect(redBlueRatio(image(2, 1, () => [100, 150, 200]), all(2))).toBe(0.5);
+  });
+});
+
+describe('meanChroma', () => {
+  it('білий і сірий — 0, беж — більше', () => {
+    expect(meanChroma(image(2, 1, () => [240, 240, 240]), all(2))).toBe(0);
+    expect(meanChroma(image(2, 1, () => [128, 128, 128]), all(2))).toBe(0);
+    expect(meanChroma(image(2, 1, () => [240, 225, 200]), all(2))).toBeCloseTo(40 / 255, 6);
+  });
+});
+
+describe('noiseLevel', () => {
+  it('рівна стіна без шуму → 0, «зерно» → більше', () => {
+    const w = 10, h = 10;
+    const flat = lumaPlane(image(w, h, () => [220, 220, 220]), w, h);
+    expect(noiseLevel(flat, all(w * h), w, h)).toBe(0);
+    const grain = lumaPlane(image(w, h, (x, y) => ((x + y) % 2 ? [230, 230, 230] : [210, 210, 210])), w, h);
+    expect(noiseLevel(grain, all(w * h), w, h)).toBeCloseTo(20 / 255, 3);
+  });
+  it('враховує лише пікселі, у яких усі сусіди в масці', () => {
+    expect(noiseLevel([0, 1, 0], [1, 1, 1], 3, 1)).toBe(0);
   });
 });
 

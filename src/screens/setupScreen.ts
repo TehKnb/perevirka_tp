@@ -7,7 +7,10 @@ import { ContourView } from '../contour/contourView';
 import { DEBUG, DebugPanel } from '../debug/debugPanel';
 import { classifyMicLabel } from '../media/micClassify';
 import type { MediaManager } from '../media/mediaManager';
+import { runSpeedTest, type NetworkState } from '../network/speedTest';
 import { checkLabels, hints, t } from '../texts';
+import { createCaptureControls } from './captureControls';
+import { createNetworkPanel } from './networkPanel';
 import { byId } from '../ui/dom';
 import { Analyzer, type AnalysisTick } from '../vision/analyzer';
 import type { VisionModels } from '../vision/models';
@@ -16,18 +19,16 @@ const ICONS = { pass: '✓', fail: '✗', checking: '…' } as const;
 
 /**
  * Екран 3: дзеркальне відео, контур, безперервна перевірка критеріїв і одна головна підказка.
- * onReady викликається, коли всі жорсткі критерії виконуються безперервно stableMsRequired.
+ * Під відео — кнопки «Зробити скріншот» і «Записати звук» (див. captureControls.ts).
  */
-export function createSetupScreen(
-  media: MediaManager,
-  getModels: () => Promise<VisionModels>,
-  onReady: (result: SetupResult) => void,
-) {
+export function createSetupScreen(media: MediaManager, getModels: () => Promise<VisionModels>) {
   const stage = byId('setup-stage');
   const video = byId<HTMLVideoElement>('setup-video');
   const loading = byId('setup-loading');
   const mainHint = byId('main-hint');
   const checklist = byId('checklist');
+  const netPanel = createNetworkPanel();
+  const capture = createCaptureControls(media, video);
   const view = new ContourView(byId('contour-svg') as unknown as SVGSVGElement);
   const debug = DEBUG ? new DebugPanel(byId('debug-panel'), view) : null;
   debug?.setContext({
@@ -36,8 +37,10 @@ export function createSetupScreen(
   });
 
   // Пункти чекліста створюємо один раз, далі лише оновлюємо стан.
+  // Інтернет показуємо окремим блоком із виміряними числами, тому в чеклісті його немає.
   const items = new Map<CheckId, HTMLLIElement>();
   for (const id of CHECK_ORDER) {
+    if (id === 'internet') continue;
     const li = document.createElement('li');
     li.dataset.status = 'checking';
     const icon = document.createElement('span');
@@ -54,10 +57,23 @@ export function createSetupScreen(
   let analyzer: Analyzer | null = null;
   let active = false;
   let state: SetupState = initialSetupState();
-  let readyFired = false;
   // Візуальна перевірка гарнітури поки заглушка (див. headsetVisual.ts). Справжню реалізацію
   // варто викликати на скріншоті (етап 4), а не на кожному кадрі; результат записати сюди.
   const headsetVisualResult: HeadsetVisualResult = 'unknown';
+  // Інтернет перевіряємо один раз за відвідування (і повторно — кнопкою).
+  let network: NetworkState | null = null;
+
+  async function testNetwork() {
+    network = { status: 'checking' };
+    try {
+      network = { status: 'done', result: await runSpeedTest(config.network, (p) => netPanel.progress(p)) };
+    } catch (err) {
+      console.error('Не вдалося перевірити інтернет', err);
+      network = { status: 'error' };
+    }
+    netPanel.show(network);
+  }
+  netPanel.onRetest(() => void testNetwork());
 
   /** Підганяємо рамку під співвідношення сторін камери, щоб екран і кадр збігалися піксель у піксель. */
   function fitStage() {
@@ -92,26 +108,23 @@ export function createSetupScreen(
         camera: media.videoTrack?.getSettings() ?? {},
         micKind: classifyMicLabel(media.audioLabel),
         headsetVisual: headsetVisualResult,
+        network: network ?? { status: 'checking' },
       },
       config.criteria,
       config.camera,
+      config.network,
     );
     const step = stepSetup(state, raw, performance.now(), config.stability);
     state = step.state;
     render(step.result, tick.metrics.mask?.iou ?? null);
     debug?.update(tick, step.result);
-
-    if (!readyFired && step.result.ok && step.result.stableMs >= config.setup.stableMsRequired) {
-      readyFired = true;
-      onReady(step.result);
-    }
+    capture.update(step.result);
   }
 
   return {
     async enter() {
       active = true;
       state = initialSetupState();
-      readyFired = false;
       mainHint.textContent = t.setup.intro;
       if (media.videoTrack) video.srcObject = new MediaStream([media.videoTrack]);
       loading.textContent = t.setup.loading;
@@ -130,6 +143,9 @@ export function createSetupScreen(
       mainHint.textContent = hints.checking;
       debug?.setModels(models);
 
+      // Тест інтернету — після завантаження моделей, щоб вони не заважали заміру.
+      if (!network || network.status === 'error') void testNetwork();
+
       analyzer ??= new Analyzer(models, video);
       analyzer.onTick = onTick;
       analyzer.start();
@@ -137,8 +153,12 @@ export function createSetupScreen(
 
     leave() {
       active = false;
+      capture.cancel();
       analyzer?.stop();
       video.srcObject = null;
     },
+
+    /** Скріншот і запис для відправки експертам (етап 5). */
+    getCaptures: () => capture.getCaptures(),
   };
 }

@@ -8,7 +8,9 @@ import {
   fractionAbove,
   insetRect,
   lumaPlane,
+  meanChroma,
   meanStd,
+  noiseLevel,
   rectMask,
   redBlueRatio,
   sobelEdges,
@@ -79,6 +81,10 @@ export interface LightMetrics {
   /** R/B на обличчі й на фоні (>1 тепле, <1 холодне світло). */
   faceRedBlue: number;
   bgRedBlue: number;
+  /** Кольоровість фону (0 — нейтральний білий/сірий; більше — відтінок: беж, блакить тощо). */
+  bgChroma: number;
+  /** Шум на фоні: при поганому світлі камера підсилює сигнал і зерно зростає. */
+  bgNoise: number;
 }
 
 export interface FrameMetrics {
@@ -90,6 +96,11 @@ export interface FrameMetrics {
   /** IoU маски людини з контуром і частка кадру, яку займає людина. */
   mask: { iou: number; personArea: number } | null;
   light: LightMetrics | null;
+  /**
+   * Фактична частота кадрів камери. У поганому світлі вебкамери подовжують витримку
+   * й частота падає. null — невідомо (рахує аналізатор, не computeFrameMetrics).
+   */
+  cameraFps: number | null;
 }
 
 export interface FrameAnalysis {
@@ -196,6 +207,8 @@ export function computeFrameMetrics(input: FrameInputs, p: AnalysisParams): Fram
       }),
       faceRedBlue,
       bgRedBlue: redBlueRatio(input.rgba, backgroundMask),
+      bgChroma: meanChroma(input.rgba, backgroundMask),
+      bgNoise: noiseLevel(luma, backgroundMask, w, h),
     };
   }
 
@@ -207,6 +220,7 @@ export function computeFrameMetrics(input: FrameInputs, p: AnalysisParams): Fram
       shoulders,
       mask,
       light,
+      cameraFps: null,
     },
     personMask,
     backgroundMask,

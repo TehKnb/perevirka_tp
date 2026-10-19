@@ -32,17 +32,27 @@ function goodMetrics(): FrameMetrics {
       bgBusyBlocks: 0,
       faceRedBlue: 1.7,
       bgRedBlue: 0.98,
+      bgChroma: 0.02,
+      bgNoise: 0.008,
     },
+    cameraFps: 30,
   };
 }
 
 function ctx(patch: (m: FrameMetrics) => void = () => {}, extra: Partial<CheckContext> = {}): CheckContext {
   const metrics = goodMetrics();
   patch(metrics);
-  return { metrics, camera: { width: 1920, height: 1080 }, micKind: 'headset', headsetVisual: 'unknown', ...extra };
+  return {
+    metrics,
+    camera: { width: 1920, height: 1080 },
+    micKind: 'headset',
+    headsetVisual: 'unknown',
+    network: { status: 'done', result: { downloadMbps: 50, uploadMbps: 20, pingMs: 20, connection: null } },
+    ...extra,
+  };
 }
 
-const run = (c: CheckContext) => evaluateChecks(c, config.criteria, config.camera);
+const run = (c: CheckContext) => evaluateChecks(c, config.criteria, config.camera, config.network);
 const get = (checks: RawCheck[], id: CheckId) => checks.find((c) => c.id === id)!;
 
 describe('evaluateChecks', () => {
@@ -54,7 +64,7 @@ describe('evaluateChecks', () => {
 
   it('повертає всі критерії з правильною важливістю', () => {
     const checks = run(ctx());
-    expect(checks).toHaveLength(17);
+    expect(checks).toHaveLength(19);
     expect(get(checks, 'bgObjects').severity).toBe('soft');
     expect(get(checks, 'bgPlain').severity).toBe('hard');
   });
@@ -103,7 +113,7 @@ describe('evaluateChecks', () => {
     expect(get(run(ctx((m) => (m.face!.angles!.pitch = 8 + 20))), 'headPose').hint).toBe(hints.lowerCamera);
     expect(get(run(ctx((m) => (m.face!.angles!.pitch = 8 - 20))), 'headPose').hint).toBe(hints.raiseCamera);
     const flipped = { ...config.criteria, pitchPositiveMeans: 'cameraBelow' as const };
-    const c = evaluateChecks(ctx((m) => (m.face!.angles!.pitch = 30)), flipped, config.camera);
+    const c = evaluateChecks(ctx((m) => (m.face!.angles!.pitch = 30)), flipped, config.camera, config.network);
     expect(get(c, 'headPose').hint).toBe(hints.raiseCamera);
   });
 
@@ -133,20 +143,39 @@ describe('evaluateChecks', () => {
     expect(get(checks, 'bgPlain').status).toBe('fail');
   });
 
-  it('світло-сірий однотонний фон проходить, темний — ні', () => {
-    const grey = run(ctx((m) => (m.light!.bgLuma = 0.62)));
-    expect(get(grey, 'bgBright').status).toBe('pass');
-    expect(get(grey, 'bgPlain').status).toBe('pass');
-    expect(get(run(ctx((m) => (m.light!.bgLuma = 0.45))), 'bgBright').status).toBe('fail');
+  it('за форматом лише білий фон: світло-сірий не проходить', () => {
+    const grey = get(run(ctx((m) => (m.light!.bgLuma = 0.62))), 'bgBright');
+    expect(grey.status).toBe('fail');
+    expect(grey.hint).toBe(hints.bgDark);
+    expect(get(run(ctx((m) => (m.light!.bgLuma = 0.86))), 'bgBright').status).toBe('pass');
   });
 
-  it('сірий, але неоднотонний фон не проходить «однотонний»', () => {
-    const checks = run(ctx((m) => {
-      m.light!.bgLuma = 0.62;
-      m.light!.bgStd = 0.15;
-    }));
-    expect(get(checks, 'bgBright').status).toBe('pass');
-    expect(get(checks, 'bgPlain').status).toBe('fail');
+  it('білий, але з відтінком (беж, блакить) не проходить', () => {
+    const tinted = get(run(ctx((m) => (m.light!.bgChroma = 0.12))), 'bgNeutral');
+    expect(tinted.status).toBe('fail');
+    expect(tinted.hint).toBe(hints.bgTint);
+  });
+
+  it('мало світла: зерно на фоні або камера знизила частоту кадрів', () => {
+    expect(get(run(ctx((m) => (m.light!.bgNoise = 0.05))), 'lowLight').hint).toBe(hints.lowLight);
+    expect(get(run(ctx((m) => (m.cameraFps = 12))), 'lowLight').status).toBe('fail');
+    // Частота кадрів невідома — вирішує лише шум.
+    expect(get(run(ctx((m) => (m.cameraFps = null))), 'lowLight').status).toBe('pass');
+    // Камера й так працює на 15 к/с — низька частота не ознака поганого світла.
+    const native15 = run(ctx((m) => (m.cameraFps = 15), { camera: { width: 1920, height: 1080, frameRate: 15 } }));
+    expect(get(native15, 'lowLight').status).toBe('pass');
+  });
+
+  it('інтернет: триває, помилка, повільний, добрий', () => {
+    expect(get(run(ctx(undefined, { network: { status: 'checking' } })), 'internet').status).toBe('pending');
+    expect(get(run(ctx(undefined, { network: { status: 'error' } })), 'internet').hint).toBe(hints.internetFailed);
+    const slow = get(
+      run(ctx(undefined, { network: { status: 'done', result: { downloadMbps: 50, uploadMbps: 4, pingMs: 30, connection: null } } })),
+      'internet',
+    );
+    expect(slow.status).toBe('fail');
+    expect(slow.hint).toContain('віддача 4');
+    expect(get(run(ctx()), 'internet').status).toBe('pass');
   });
 
   it('обличчя темне / пересвічене, контражур', () => {
@@ -166,7 +195,6 @@ describe('evaluateChecks', () => {
       m.light!.bgRedBlue = 1.4;
     }));
     expect(get(checks, 'bgObjects').status).toBe('fail');
-    expect(get(checks, 'daylight').status).toBe('fail');
     expect(get(checks, 'coldLight').status).toBe('fail');
   });
 

@@ -57,6 +57,21 @@ describe('stepSetup — гістерезис', () => {
   });
 });
 
+describe('stepSetup — перевірка, що триває (pending)', () => {
+  it('не провал і не виконано; блокує ok; її підказка — коли інших проблем немає', () => {
+    const frame = [raw('face', 'pass'), { ...raw('internet', 'pending'), hint: hints.internetChecking }];
+    const { result } = runFrames(repeat(10, frame));
+    expect(result.checks.find((c) => c.id === 'internet')!.status).toBe('checking');
+    expect(result.ok).toBe(false);
+    expect(result.mainHint).toBe(hints.internetChecking);
+  });
+
+  it('провалений критерій важливіший за підказку «перевіряємо інтернет»', () => {
+    const frame = [raw('face', 'fail', hints.noFace), { ...raw('internet', 'pending'), hint: hints.internetChecking }];
+    expect(runFrames(repeat(4, frame)).result.mainHint).toBe(hints.noFace);
+  });
+});
+
 describe('stepSetup — ok і stableMs', () => {
   it('ok, коли всі жорсткі виконані; м\'які не заважають', () => {
     const frame = [raw('face', 'pass'), raw('bgObjects', 'fail', hints.bgObjects, 'soft')];

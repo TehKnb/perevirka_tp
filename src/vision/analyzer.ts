@@ -55,6 +55,9 @@ export class Analyzer {
   private rafId = 0;
   private vfcId = 0;
   private tickIndex = 0;
+  /** Фактична частота кадрів камери (за лічильником показаних кадрів requestVideoFrameCallback). */
+  private cameraFps: number | null = null;
+  private fpsWindow: { at: number; frames: number } | null = null;
   private lastPose: PoseLandmarkerResult | null = null;
   private lastSegment: Pick<AnalysisTick, 'metrics' | 'personMask' | 'backgroundMask'> | null = null;
   private timings: StageTimings = { face: 0, pose: 0, segment: 0, metrics: 0 };
@@ -73,6 +76,9 @@ export class Analyzer {
 
   stop() {
     this.running = false;
+    // Після паузи (чи зміни камери) частоту кадрів міряємо заново.
+    this.fpsWindow = null;
+    this.cameraFps = null;
     cancelAnimationFrame(this.rafId);
     if ('cancelVideoFrameCallback' in this.video) this.video.cancelVideoFrameCallback(this.vfcId);
   }
@@ -81,10 +87,29 @@ export class Analyzer {
     if (!this.running) return;
     // requestVideoFrameCallback спрацьовує на кожен новий кадр камери; де його немає — rAF.
     if ('requestVideoFrameCallback' in this.video) {
-      this.vfcId = this.video.requestVideoFrameCallback((now) => this.frame(now));
+      this.vfcId = this.video.requestVideoFrameCallback((now, meta) => {
+        this.measureCameraFps(now, meta.presentedFrames);
+        this.frame(now);
+      });
     } else {
       this.rafId = requestAnimationFrame((now) => this.frame(now));
     }
+  }
+
+  /**
+   * Частота кадрів камери за лічильником presentedFrames: він рахує кожен показаний кадр,
+   * навіть коли сторінка зайнята аналізом і виклики зливаються. Вікно — щонайменше 1 с.
+   */
+  private measureCameraFps(now: number, presentedFrames: number) {
+    const w = this.fpsWindow;
+    if (!w || presentedFrames < w.frames) {
+      this.fpsWindow = { at: now, frames: presentedFrames };
+      return;
+    }
+    if (now - w.at < 1000) return;
+    const fps = ((presentedFrames - w.frames) * 1000) / (now - w.at);
+    this.cameraFps = this.cameraFps === null ? fps : this.cameraFps * 0.5 + fps * 0.5;
+    this.fpsWindow = { at: now, frames: presentedFrames };
   }
 
   private frame(now: number) {
@@ -189,6 +214,8 @@ export class Analyzer {
         a,
       ),
     );
+
+    analysis.metrics.cameraFps = this.cameraFps;
 
     if (seg.conf) {
       this.lastSegment = analysis;

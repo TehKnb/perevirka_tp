@@ -4,9 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
-    <title>Перевірка камери та мікрофона</title>
+    <meta name="theme-color" content="#00285A" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/brand/favicon-64.png" />
+    <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
+    <title>Перевірка камери та мікрофона · Конс на Бі$</title>
   </head>
   <body>
+    <header class="brand-bar">
+      <div class="brand-inner">
+        <img class="brand-logo" src="/brand/logo-white.png" width="66" height="40" alt="" />
+        <div class="brand-text">
+          <span class="brand-name" data-t="brand.name"></span>
+          <span class="brand-tagline" data-t="brand.tagline"></span>
+        </div>
+      </div>
+    </header>
     <main class="page">
       <!-- Телефон або планшет -->
       <section class="screen card" data-screen="mobile" hidden>
@@ -24,6 +36,23 @@
           <li data-t="start.step3"></li>
           <li data-t="start.step4"></li>
         </ol>
+        <section class="examples" aria-labelledby="examples-title">
+          <h2 id="examples-title" data-t="start.examplesTitle"></h2>
+          <figure class="example">
+            <div class="example-photos">
+              <img src="/examples/windows-1.jpg" width="459" height="254" data-t-alt="start.exampleAltWindows" alt="" />
+              <img src="/examples/windows-2.jpg" width="459" height="254" data-t-alt="start.exampleAltWindows" alt="" />
+            </div>
+            <figcaption><strong data-t="start.windowsTitle"></strong> <span data-t="start.windowsText"></span></figcaption>
+          </figure>
+          <figure class="example">
+            <div class="example-photos">
+              <img src="/examples/macos-1.jpg" width="459" height="255" data-t-alt="start.exampleAltMac" alt="" />
+              <img src="/examples/macos-2.jpg" width="459" height="255" data-t-alt="start.exampleAltMac" alt="" />
+            </div>
+            <figcaption><strong data-t="start.macTitle"></strong> <span data-t="start.macText"></span></figcaption>
+          </figure>
+        </section>
         <p class="notice" id="consent-notice" data-t="start.notice"></p>
         <button type="button" class="btn btn-primary" id="btn-start" data-t="start.begin"></button>
       </section>
@@ -59,7 +88,7 @@
 
             <div id="switch-error" class="alert alert-error" role="alert" hidden></div>
 
-            <button type="button" class="btn btn-primary" id="btn-devices-next" data-t="devices.next"></button>
+            <button type="button" class="btn btn-primary devices-next" id="btn-devices-next" data-t="devices.next"></button>
           </div>
         </div>
       </section>
@@ -74,13 +103,63 @@
               <svg id="contour-svg" class="contour" aria-hidden="true" preserveAspectRatio="none"></svg>
               <div id="setup-loading" class="stage-overlay" role="status"></div>
             </div>
+
+            <!-- Скріншот і запис голосу: кнопки активні, коли всі пункти виконано 3 с поспіль -->
+            <div class="capture" id="capture">
+              <p class="capture-status" id="capture-status" role="status" aria-live="polite"></p>
+              <div class="capture-buttons">
+                <button type="button" class="btn btn-primary" id="btn-screenshot" disabled data-t="capture.screenshot"></button>
+                <button type="button" class="btn btn-primary" id="btn-record" disabled data-t="capture.record"></button>
+              </div>
+
+              <div class="recording" id="recording" hidden>
+                <p class="count-prompt" data-t="capture.countPrompt"></p>
+                <div class="level" aria-hidden="true"><div class="level-bar" id="level-bar"></div></div>
+                <p class="recording-info">
+                  <span class="rec-dot" aria-hidden="true"></span>
+                  <span data-t="capture.recordingLabel"></span>
+                  <span id="rec-timer"></span>
+                </p>
+                <p class="status status-warn" id="rec-louder" role="status" data-t="capture.louder" hidden></p>
+                <button type="button" class="btn btn-primary" id="btn-stop" data-t="capture.stop"></button>
+              </div>
+
+              <div class="captures" id="captures" hidden>
+                <figure class="capture-item" id="shot-result" hidden>
+                  <img id="shot-img" data-t-alt="capture.screenshotAlt" alt="" />
+                  <figcaption data-t="capture.screenshotDone"></figcaption>
+                </figure>
+                <div class="capture-item" id="audio-result" hidden>
+                  <p class="capture-item-title" id="audio-title"></p>
+                  <audio controls id="audio-player"></audio>
+                </div>
+              </div>
+            </div>
           </div>
           <aside class="setup-side">
             <p class="main-hint" id="main-hint" role="status" aria-live="polite" data-t="setup.intro"></p>
+            <p class="reminder small" data-t="setup.reminder"></p>
             <h2 class="checklist-title" data-t="setup.checklistTitle"></h2>
             <ul class="checklist" id="checklist"></ul>
-            <p class="muted small" data-t="setup.softNote"></p>
-            <p class="muted small" data-t="setup.reminder"></p>
+            <section class="net-panel" id="net-panel" aria-labelledby="net-title" data-status="checking">
+              <h2 class="checklist-title" id="net-title" data-t="setup.netTitle"></h2>
+              <p class="net-status" id="net-status" role="status" aria-live="polite"></p>
+              <dl class="net-values">
+                <div class="net-row" id="net-row-download">
+                  <dt data-t="setup.netDownload"></dt>
+                  <dd><span class="net-value" id="net-download">—</span> <span class="net-need" id="net-need-download"></span></dd>
+                </div>
+                <div class="net-row" id="net-row-upload">
+                  <dt data-t="setup.netUpload"></dt>
+                  <dd><span class="net-value" id="net-upload">—</span> <span class="net-need" id="net-need-upload"></span></dd>
+                </div>
+                <div class="net-row" id="net-row-ping">
+                  <dt data-t="setup.netPing"></dt>
+                  <dd><span class="net-value" id="net-ping">—</span> <span class="net-need" id="net-need-ping"></span></dd>
+                </div>
+              </dl>
+              <button type="button" class="btn btn-secondary" id="btn-retest-internet" data-t="setup.retestInternet" hidden></button>
+            </section>
             <button type="button" class="btn btn-secondary" id="btn-change-devices" data-t="setup.changeDevices"></button>
           </aside>
         </div>

@@ -13,6 +13,7 @@ function metrics(iou: number | null): FrameMetrics {
     shoulders: { minVisibility: 0.9, insideFrame: true, marginBelow: 0.1, tilt: 0 },
     mask: iou === null ? null : { iou, personArea: 0.3 },
     light: null,
+    cameraFps: null,
   };
 }
 

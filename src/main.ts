@@ -1,3 +1,6 @@
+// Шрифти бренд-буку з npm: файли лежать разом із сайтом, без звернень до Google Fonts.
+import '@fontsource-variable/commissioner';
+import '@fontsource-variable/roboto-condensed';
 import './styles.css';
 import { config } from './config';
 import { isMobileDevice, readDeviceEnv } from './env';
@@ -30,10 +33,7 @@ function boot() {
     return modelsPromise;
   };
 
-  const setup = createSetupScreen(media, getModels, (result) => {
-    // Етап 4: тут відкриється екран запису (і буде зроблено скріншот).
-    console.info('Усі жорсткі критерії виконано стабільно', result);
-  });
+  const setup = createSetupScreen(media, getModels);
   const devices = createDevicesScreen(media, () => {
     showScreen('setup');
     void setup.enter();

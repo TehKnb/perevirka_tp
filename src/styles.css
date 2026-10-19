@@ -1,18 +1,33 @@
+/*
+ * Оформлення за бренд-буком «Конс на Бі$».
+ * Кольори бренду: темно-синій #00285A, чорний #000000, білий #FFFFFF.
+ * Шрифти: Commissioner — основний, Roboto Condensed — для дрібного тексту.
+ * Зелений, червоний і помаранчевий — лише службові кольори статусів (пройдено / ні / порада).
+ */
 :root {
-  --bg: #f3f5f8;
-  --card: #ffffff;
-  --text: #1a1f29;
-  --muted: #545d6b;
-  --border: #d5dae2;
-  --primary: #1f5fd1;
-  --primary-hover: #174cab;
-  --focus: #f0a400;
+  --brand: #00285a;
+  --brand-dark: #001a3d;
+  --brand-tint: rgb(0 40 90 / 5%);
+  --black: #000000;
+  --white: #ffffff;
+
+  --bg: var(--white);
+  --card: var(--white);
+  --text: var(--black);
+  --muted: #4a5a70;
+  --border: #ccd4df;
+  --primary: var(--brand);
+  --primary-hover: var(--brand-dark);
+  --focus: var(--brand);
   --ok: #157a3d;
   --warn: #9a4b00;
   --warn-bg: #fff4e5;
   --error: #b42318;
   --error-bg: #fdecea;
-  --radius: 12px;
+  --radius: 20px;
+
+  --font-main: 'Commissioner Variable', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-small: 'Roboto Condensed Variable', 'Arial Narrow', system-ui, sans-serif;
   color-scheme: light;
 }
 
@@ -25,17 +40,55 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-main);
   font-size: 17px;
   line-height: 1.5;
 }
 
+/* Шапка бренду */
+.brand-bar {
+  background: var(--brand);
+  color: var(--white);
+}
+
+.brand-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-logo {
+  display: block;
+  height: 40px;
+  width: auto;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.brand-name {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.brand-tagline {
+  font-family: var(--font-small);
+  font-size: 14px;
+  opacity: 0.85;
+}
+
 .page {
-  min-height: 100vh;
+  min-height: calc(100vh - 64px);
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 48px 16px;
+  padding: 40px 16px 48px;
 }
 
 [hidden] {
@@ -49,7 +102,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 32px;
-  box-shadow: 0 1px 3px rgb(16 24 40 / 6%);
+  box-shadow: 0 8px 24px rgb(0 40 90 / 8%);
 }
 
 .card-wide {
@@ -57,8 +110,10 @@ body {
 }
 
 h1 {
-  font-size: 28px;
-  line-height: 1.25;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--brand);
   margin: 0 0 16px;
 }
 
@@ -68,6 +123,8 @@ h1:focus {
 
 h2 {
   font-size: 19px;
+  font-weight: 600;
+  color: var(--brand);
   margin: 0 0 8px;
 }
 
@@ -92,19 +149,64 @@ p {
   margin-bottom: 6px;
 }
 
+.steps li::marker {
+  color: var(--brand);
+  font-weight: 600;
+}
+
 .notice {
   color: var(--muted);
   font-size: 15px;
-  border-left: 3px solid var(--border);
+  border-left: 3px solid var(--brand);
   padding-left: 12px;
+}
+
+/* Приклади правильного налаштування */
+.examples {
+  margin: 0 0 24px;
+}
+
+.examples h2 {
+  font-size: 19px;
+  margin-bottom: 12px;
+}
+
+.example {
+  margin: 0 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.example-photos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.example-photos img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.example figcaption {
+  padding: 10px 14px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.example figcaption strong {
+  display: block;
+  color: var(--text);
+  margin-bottom: 2px;
 }
 
 /* Кнопки */
 .btn {
   font: inherit;
   font-weight: 600;
-  border-radius: 8px;
-  padding: 12px 24px;
+  border-radius: 999px;
+  padding: 12px 28px;
   cursor: pointer;
   border: 1px solid transparent;
 }
@@ -112,7 +214,7 @@ p {
 .btn:focus-visible,
 select:focus-visible {
   outline: 3px solid var(--focus);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 .btn:disabled {
@@ -130,9 +232,13 @@ select:focus-visible {
 }
 
 .btn-secondary {
-  background: #fff;
+  background: var(--white);
   color: var(--primary);
   border-color: var(--primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--brand-tint);
 }
 
 /* Повідомлення */
@@ -231,7 +337,115 @@ select {
 
 .stage-wrap {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Скріншот і запис голосу під відео */
+.capture {
+  width: 100%;
+}
+
+.capture-status {
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.capture-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.recording {
+  margin-top: 16px;
+  padding: 16px;
+  border: 2px solid var(--primary);
+  border-radius: 16px;
+  background: var(--brand-tint);
+}
+
+.count-prompt {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.level {
+  height: 12px;
+  border-radius: 6px;
+  background: #dfe5ee;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.level-bar {
+  height: 100%;
+  background: var(--ok);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.08s linear;
+}
+
+.recording-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--error);
+  animation: rec-blink 1s infinite;
+}
+
+@keyframes rec-blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rec-dot {
+    animation: none;
+  }
+}
+
+.captures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.capture-item {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.capture-item img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.capture-item figcaption,
+.capture-item-title {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+
+.capture-item audio {
+  width: 100%;
+  margin-top: 8px;
 }
 
 /* Рамка має точно співвідношення сторін камери (задається з JS),
@@ -301,6 +515,26 @@ select {
   --contour-color: #2fd16b;
 }
 
+.setup-side .btn {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+/* Нагадування про штучне світло — перед чеклістом, помітне, але спокійне */
+.reminder {
+  background: var(--brand-tint);
+  border-left: 3px solid var(--brand);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 0 0 16px;
+}
+
+/* Кнопка «Далі» на екрані пристроїв — з відступом від списку мікрофонів */
+.devices-next {
+  margin-top: 24px;
+}
+
 .main-hint {
   font-size: 20px;
   font-weight: 600;
@@ -350,6 +584,78 @@ select {
 
 .checklist [data-status='checking'] {
   color: var(--muted);
+}
+
+/* Блок «Швидкість інтернету» */
+.net-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 0 0 16px;
+}
+
+.net-panel[data-status='pass'] {
+  border-color: var(--ok);
+}
+
+.net-panel[data-status='fail'] {
+  border-color: var(--error);
+}
+
+.net-panel .checklist-title {
+  margin-top: 0;
+}
+
+.net-status {
+  font-size: 14px;
+  margin: 0 0 8px;
+  color: var(--muted);
+}
+
+.net-panel[data-status='fail'] .net-status {
+  color: var(--error);
+}
+
+.net-values {
+  margin: 0;
+  font-size: 15px;
+}
+
+.net-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.net-row dt {
+  color: var(--muted);
+}
+
+.net-row dd {
+  margin: 0;
+  text-align: right;
+}
+
+.net-value {
+  font-weight: 700;
+}
+
+.net-row[data-status='pass'] .net-value {
+  color: var(--ok);
+}
+
+.net-row[data-status='fail'] .net-value {
+  color: var(--error);
+}
+
+.net-need {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.net-panel .btn {
+  margin: 8px 0 0;
 }
 
 /* Debug */
@@ -494,4 +800,20 @@ select {
   .devices-layout {
     grid-template-columns: 1fr;
   }
+}
+
+/* Дрібний текст — Roboto Condensed (бренд-бук: «для мілкого тексту») */
+.small,
+.notice,
+.status,
+.net-status,
+.net-need,
+.example figcaption span,
+.capture-item figcaption,
+.capture-item-title,
+.checklist-title,
+.debug-legend,
+.field > span,
+.debug-snapshot label {
+  font-family: var(--font-small);
 }

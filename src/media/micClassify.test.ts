@@ -7,10 +7,13 @@ describe('classifyMicLabel', () => {
     ['Communications - Headset Microphone (Realtek(R) Audio)', 'headset'],
     ['Headset (WH-1000XM4 Hands-Free AG Audio)', 'headset'],
     ['AirPods Pro', 'headset'],
+    ['EarPods', 'headset'],
+    ['External Microphone', 'headset'],
     ['Мікрофон (Гарнітура USB)', 'headset'],
     ['Microphone (USB Audio Device)', 'headset'],
     ['Microphone (Plantronics Blackwire 3220 Series)', 'headset'],
     ['Microphone (HyperX Cloud II)', 'headset'],
+    ['Microphone (HATOR HYPERPUNK 3 - 7.1)', 'headset'],
     ['Microphone (Logitech USB Headset H390)', 'headset'],
   ])('%s → headset', (label, expected) => {
     expect(classifyMicLabel(label)).toBe(expected);

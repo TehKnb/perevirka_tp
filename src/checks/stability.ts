@@ -28,12 +28,15 @@ interface CheckState {
   hint: string | null;
   value: RawCheck['value'];
   severity: Severity;
+  /** Останній сирий статус — 'pending' (перевірка ще триває). */
+  pending: boolean;
 }
 
 export interface SetupState {
   checks: Partial<Record<CheckId, CheckState>>;
   okSince: number | null;
-  hint: { text: string; since: number } | null;
+  /** placeholder — проміжна підказка («Перевіряємо…»), яку можна змінити будь-коли. */
+  hint: { text: string; since: number; placeholder: boolean } | null;
 }
 
 type Stability = AppConfig['stability'];
@@ -65,9 +68,16 @@ export function stepSetup(
       hint: null,
       value: null,
       severity: r.severity,
+      pending: false,
     };
-    const next: CheckState = { ...p, value: r.value, severity: r.severity };
-    if (r.status === 'pass') {
+    const next: CheckState = { ...p, value: r.value, severity: r.severity, pending: r.status === 'pending' };
+    if (r.status === 'pending') {
+      // Перевірка ще триває: не виконано, але й не провалено.
+      next.status = 'checking';
+      next.passStreak = 0;
+      next.failStreak = 0;
+      next.hint = r.hint;
+    } else if (r.status === 'pass') {
       next.passStreak = p.passStreak + 1;
       next.failStreak = 0;
       if (next.passStreak >= cfg.passFrames) next.status = 'pass';
@@ -88,16 +98,25 @@ export function stepSetup(
   // Кандидат — перший за пріоритетом проваленим критерій із підказкою.
   const failing = ordered.find((c) => c.s.status === 'fail' && c.s.hint);
   let candidate: string;
+  let placeholder = false;
+  // Якщо провалених немає — підказка першої перевірки, що ще триває (наприклад, інтернет).
+  const pending = ordered.find((c) => c.s.pending && c.s.hint);
   if (failing) candidate = failing.s.hint!;
   else if (ok) candidate = hints.allGood;
-  else candidate = hints.checking;
+  else if (pending) {
+    candidate = pending.s.hint!;
+    placeholder = true;
+  } else {
+    candidate = hints.checking;
+    placeholder = true;
+  }
 
   // Антимиготіння: підказка змінюється не частіше ніж раз на hintMinIntervalMs.
-  // Від «Перевіряємо…» до першої справжньої підказки переходимо одразу.
+  // Проміжну підказку («Перевіряємо…», «Перевіряємо інтернет…») замінюємо одразу.
   let hint = prev.hint;
-  const throttled = hint !== null && hint.text !== hints.checking && now - hint.since < cfg.hintMinIntervalMs;
+  const throttled = hint !== null && !hint.placeholder && now - hint.since < cfg.hintMinIntervalMs;
   if (!hint || (hint.text !== candidate && !throttled)) {
-    hint = { text: candidate, since: now };
+    hint = { text: candidate, since: now, placeholder };
   }
 
   return {

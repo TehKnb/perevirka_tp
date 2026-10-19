@@ -128,6 +128,43 @@ export function redBlueRatio(rgba: ArrayLike<number>, mask: ArrayLike<number>): 
   return b === 0 ? (r === 0 ? 1 : Infinity) : r / b;
 }
 
+/**
+ * Середня кольоровість по масці: (max(R,G,B) − min(R,G,B)) / 255.
+ * 0 — нейтральний білий чи сірий; бежевий, блакитний, рожевий фон дають більше.
+ */
+export function meanChroma(rgba: ArrayLike<number>, mask: ArrayLike<number>): number {
+  let sum = 0;
+  let n = 0;
+  for (let i = 0, p = 0; i < mask.length; i++, p += 4) {
+    if (mask[i]! > 0) {
+      const r = rgba[p]!, g = rgba[p + 1]!, b = rgba[p + 2]!;
+      sum += (Math.max(r, g, b) - Math.min(r, g, b)) / 255;
+      n++;
+    }
+  }
+  return n === 0 ? 0 : sum / n;
+}
+
+/**
+ * Рівень шуму: середнє |L − середнє чотирьох сусідів| по пікселях маски,
+ * у яких усі сусіди теж у масці. На рівній стіні це переважно зерно камери,
+ * яке зростає, коли світла мало й камера підсилює сигнал.
+ */
+export function noiseLevel(luma: ArrayLike<number>, mask: ArrayLike<number>, w: number, h: number): number {
+  let sum = 0;
+  let n = 0;
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      if (!(mask[i]! > 0 && mask[i - 1]! > 0 && mask[i + 1]! > 0 && mask[i - w]! > 0 && mask[i + w]! > 0)) continue;
+      const avg = (luma[i - 1]! + luma[i + 1]! + luma[i - w]! + luma[i + w]!) / 4;
+      sum += Math.abs(luma[i]! - avg);
+      n++;
+    }
+  }
+  return n === 0 ? 0 : sum / n;
+}
+
 export interface Rect {
   x: number;
   y: number;

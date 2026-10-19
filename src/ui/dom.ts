@@ -14,6 +14,11 @@ export function applyTexts(root: ParentNode = document) {
     if (typeof value === 'string') el.textContent = value;
     else console.warn(`Немає тексту для ключа "${el.dataset.t}"`);
   });
+  // Альтернативний текст зображень — з атрибута data-t-alt.
+  root.querySelectorAll<HTMLElement>('[data-t-alt]').forEach((el) => {
+    const value = lookup(el.dataset.tAlt ?? '');
+    if (typeof value === 'string') el.setAttribute('alt', value);
+  });
   document.title = t.app.title;
 }
 

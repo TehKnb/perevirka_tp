@@ -30,6 +30,10 @@ const SCENARIOS = [
   '8а. Тепле (жовте) світло',
   '8б. Холодне (біле) світло',
   '9. Друга людина в кадрі',
+  '10. Погане (тьмяне) світло',
+  '11а. Білий фон',
+  '11б. Світло-сірий фон',
+  '11в. Фон із відтінком (беж, блакить)',
   'Інше',
 ];
 
@@ -184,7 +188,7 @@ export class DebugPanel {
         `${f(tick.timings.face, 1)} / ${f(tick.timings.pose, 1)} / ${f(tick.timings.segment, 1)} / ${f(tick.timings.metrics, 1)}`,
       ],
       ['Делегат / завантаження, мс', `${this.models?.delegate ?? '—'} / ${f(this.models?.loadMs, 0)}`],
-      ['Кадр камери', `${tick.videoWidth}×${tick.videoHeight}`],
+      ['Кадр камери / частота кадрів', `${tick.videoWidth}×${tick.videoHeight} / ${f(m.cameraFps, 1)}`],
       ['Облич / поз', `${m.faces} / ${m.poses}`],
       ['IoU з контуром', f(m.mask?.iou)],
       ['Частка кадру з людиною', f(m.mask?.personArea)],
@@ -205,6 +209,8 @@ export class DebugPanel {
       ['Фон: пересвічено', f(l?.bgOverexposed, 3)],
       ['Фон: строкаті блоки', f(l?.bgBusyBlocks)],
       ['R/B обличчя / фон', `${f(l?.faceRedBlue)} / ${f(l?.bgRedBlue)}`],
+      ['Фон: відтінок (кольоровість)', f(l?.bgChroma, 3)],
+      ['Фон: шум (зерно)', f(l?.bgNoise, 4)],
     ];
     this.table.replaceChildren(
       ...rows.map(([k, v]) => {

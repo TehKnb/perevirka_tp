@@ -1,5 +1,9 @@
-// Завантажує моделі MediaPipe у public/models/ і копіює wasm із node_modules у public/mediapipe/wasm/.
+// Готує файли, яких немає в git:
+//   - моделі MediaPipe у public/models/ (завантажує зі сховища Google);
+//   - wasm із node_modules у public/mediapipe/wasm/;
+//   - файли перевірки інтернету в public/speedtest/ (випадкові дані, генеруються локально).
 // Запуск: npm run fetch-models (повторний запуск пропускає вже наявні файли; --force перезавантажує).
+import { randomBytes } from 'node:crypto';
 import { copyFile, mkdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -63,9 +67,25 @@ async function copyWasm() {
   console.log(`✓ wasm скопійовано в public/mediapipe/wasm/`);
 }
 
+/** Розмір файлу для заміру завантаження. Потоки читають його повторно, якщо канал дуже швидкий. */
+const SPEEDTEST_BYTES = 16 * 1024 * 1024;
+
+async function makeSpeedtestFiles() {
+  const dir = join(root, 'public', 'speedtest');
+  await mkdir(dir, { recursive: true });
+  const download = join(dir, 'download.bin');
+  if (force || !(await exists(download))) {
+    // Випадкові байти не стискаються, тож сервер не «прискорить» тест компресією.
+    await writeFile(download, randomBytes(SPEEDTEST_BYTES));
+  }
+  await writeFile(join(dir, 'ping.txt'), 'ok');
+  console.log(`✓ файли перевірки інтернету в public/speedtest/ (${mb(SPEEDTEST_BYTES)})`);
+}
+
 try {
   await fetchModels();
   await copyWasm();
+  await makeSpeedtestFiles();
 } catch (err) {
   console.error('Помилка:', err.message);
   process.exit(1);

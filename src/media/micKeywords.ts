@@ -18,6 +18,7 @@ export const HEADSET_STRONG: readonly string[] = [
   'earphone',
   'earbud',
   'airpods',
+  'earpods',
   'hands-free',
   'handsfree',
   'гарнітур',
@@ -76,6 +77,7 @@ export const HEADSET_WEAK: readonly string[] = [
   'sennheiser',
   'epos',
   'hyperx',
+  'hator',
   'razer',
   'steelseries',
   'corsair',
@@ -87,4 +89,8 @@ export const HEADSET_WEAK: readonly string[] = [
   'beats',
   'usb',
   'bluetooth',
+  // Мікрофон, підключений у роз'єм навушників (так macOS показує дротові EarPods 3.5 мм).
+  'external microphone',
+  'зовнішній мікрофон',
+  'внешний микрофон',
 ];
