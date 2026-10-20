@@ -2,13 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { config } from '../config';
 import { mbps, median, speedProblems, speedServers, steadyMbps, withBust, type SpeedResult } from './speedTest';
 
-const result = (downloadMbps: number, uploadMbps: number, pingMs = 200): SpeedResult => ({
+const result = (
+  downloadMbps: number | null,
+  uploadMbps: number | null,
+  pingMs = 200,
+  network: SpeedResult['network'] = { kind: 'other' },
+): SpeedResult => ({
   downloadMbps,
   uploadMbps,
   pingMs,
   server: 'cloudflare',
   connection: null,
+  network,
 });
+const mobile: SpeedResult['network'] = { kind: 'mobile', operator: 'Київстар', source: 'ip' };
 
 describe('speedProblems', () => {
   it('пінг не перевіряється навіть дуже великий', () => {
@@ -19,6 +26,16 @@ describe('speedProblems', () => {
   });
   it('рівно на порогах — проходить', () => {
     expect(speedProblems(result(20, 10), config.network)).toEqual([]);
+  });
+  it('мобільний інтернет: швидкість не міряли — лише одна проблема', () => {
+    expect(speedProblems(result(null, null, 30, mobile), config.network)).toEqual(['mobile']);
+  });
+  it('мобільний інтернет не блокує, якщо rejectMobile вимкнено', () => {
+    const c = { ...config.network, rejectMobile: false };
+    expect(speedProblems(result(50, 20, 30, mobile), c)).toEqual([]);
+  });
+  it('тип підключення невідомий — вирішує швидкість', () => {
+    expect(speedProblems(result(50, 20, 30, { kind: 'unknown' }), config.network)).toEqual([]);
   });
 });
 

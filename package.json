@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "fetch-models": "node scripts/fetch-models.mjs"
+    "fetch-models": "node scripts/fetch-models.mjs",
+    "fetch-mobile-ranges": "node scripts/fetch-mobile-ranges.mjs"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

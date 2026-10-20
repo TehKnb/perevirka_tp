@@ -55,13 +55,20 @@ export const t = {
     checklistTitle: 'Що перевіряємо',
     retestInternet: 'Перевірити інтернет ще раз',
     netTitle: 'Швидкість інтернету',
+    netConnection: 'Підключення',
+    netConnectionMobile: (operator: string | null) => (operator ? `Мобільний інтернет (${operator})` : 'Мобільний інтернет'),
+    netConnectionOther: 'Не мобільне',
+    netConnectionUnknown: 'Не вдалося визначити',
     netDownload: 'Завантаження',
     netUpload: 'Віддача',
     netWaiting: 'Перевірка почнеться, щойно все буде готово.',
+    netPhaseConnection: 'Перевіряємо підключення…',
     netPhaseDownload: 'Міряємо швидкість завантаження…',
     netPhaseUpload: 'Міряємо швидкість віддачі…',
     netOk: 'Інтернет підходить.',
     netSlow: 'Інтернет надто повільний. Підключіться до швидшої мережі (краще кабель) і перевірте ще раз.',
+    netMobile:
+      'Схоже, ви підключені через мобільний інтернет — він не підходить. Підключіться до домашнього чи офісного інтернету (кабель або Wi‑Fi від роутера) і перевірте ще раз. Роздача інтернету з телефона — теж мобільний інтернет.',
     netError: 'Не вдалося перевірити інтернет. Перевірте підключення й спробуйте ще раз.',
     netNeedMin: (v: number, unit: string) => `(потрібно від ${v} ${unit})`,
     mbps: 'Мбіт/с',
@@ -139,10 +146,19 @@ export const hints = {
 } as const;
 
 /** Підказка про повільний інтернет із виміряними числами. */
-export function internetSlowHint(r: { downloadMbps: number; uploadMbps: number }): string {
+export function internetSlowHint(r: { downloadMbps: number | null; uploadMbps: number | null }): string {
+  const fmt = (v: number | null) => (v === null ? '—' : v.toFixed(0));
   return (
-    `Інтернет повільний: завантаження ${r.downloadMbps.toFixed(0)}, віддача ${r.uploadMbps.toFixed(0)} Мбіт/с. ` +
+    `Інтернет повільний: завантаження ${fmt(r.downloadMbps)}, віддача ${fmt(r.uploadMbps)} Мбіт/с. ` +
     `Підключіться до швидшої мережі (краще кабель) і перевірте ще раз.`
+  );
+}
+
+/** Підказка про мобільний інтернет (зокрема роздачу з телефона). */
+export function internetMobileHint(operator: string | null): string {
+  return (
+    `Схоже, це мобільний інтернет${operator ? ` (${operator})` : ''} — він не підходить. ` +
+    `Підключіться до домашнього чи офісного інтернету (кабель або Wi‑Fi від роутера) і натисніть «Перевірити інтернет ще раз».`
   );
 }
 

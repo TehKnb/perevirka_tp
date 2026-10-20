@@ -1,15 +1,19 @@
 import type { AppConfig } from '../config';
+import { detectConnectionKind, type ConnectionKind } from './mobileNetwork';
 
 /** Результат вимірювання інтернету. */
 export interface SpeedResult {
-  downloadMbps: number;
-  uploadMbps: number;
+  /** null — не міряли: виявлено мобільний інтернет. */
+  downloadMbps: number | null;
+  uploadMbps: number | null;
   /** Лише для метаданих: на проходження не впливає. */
   pingMs: number;
   /** Звідки міряли. */
   server: SpeedServer['name'];
   /** navigator.connection (лише Chromium): грубі оцінки браузера, для метаданих. */
   connection: { effectiveType?: string; downlink?: number; rtt?: number; type?: string } | null;
+  /** Мобільний інтернет чи ні (сама IP-адреса не зберігається). */
+  network: ConnectionKind;
 }
 
 export type NetworkState =
@@ -53,13 +57,20 @@ export function median(values: number[]): number {
   return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
 }
 
-export type SpeedProblem = 'download' | 'upload';
+export type SpeedProblem = 'mobile' | 'download' | 'upload';
 
-/** Які показники не дотягують до формату (пінг не перевіряється). */
+/** Чи відхиляємо це підключення як мобільне. */
+export function isRejectedMobile(r: SpeedResult, c: NetworkConfig): boolean {
+  return c.rejectMobile && r.network.kind === 'mobile';
+}
+
+/** Що не відповідає формату: мобільний інтернет, повільне завантаження чи віддача (пінг не перевіряється). */
 export function speedProblems(r: SpeedResult, c: NetworkConfig): SpeedProblem[] {
   const out: SpeedProblem[] = [];
-  if (!(r.downloadMbps >= c.minDownloadMbps)) out.push('download');
-  if (!(r.uploadMbps >= c.minUploadMbps)) out.push('upload');
+  if (isRejectedMobile(r, c)) out.push('mobile');
+  // null буває лише тоді, коли швидкість не міряли через мобільний інтернет.
+  if (r.downloadMbps !== null && !(r.downloadMbps >= c.minDownloadMbps)) out.push('download');
+  if (r.uploadMbps !== null && !(r.uploadMbps >= c.minUploadMbps)) out.push('upload');
   return out;
 }
 
@@ -83,14 +94,19 @@ export function withBust(url: string): string {
 
 const GRACE_MS = 600;
 
-/** Пінг: медіана часу від запиту до першого байта відповіді (перший запит — прогрів, не рахуємо). */
-async function measurePing(s: SpeedServer, c: NetworkConfig): Promise<number> {
+/**
+ * Пінг: медіана часу від запиту до першого байта відповіді (перший запит — прогрів, не рахуємо).
+ * Заодно — IP-адреса, якою нас бачить Cloudflare (заголовок cf-meta-ip; може бути IPv6).
+ */
+async function measurePing(s: SpeedServer, c: NetworkConfig): Promise<{ pingMs: number; ip: string | null }> {
   const samples: number[] = [];
+  let ip: string | null = null;
   for (let i = 0; i <= c.pingSamples; i++) {
     const url = withBust(s.pingUrl);
     const t0 = performance.now();
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`ping HTTP ${res.status}`);
+    ip ??= res.headers.get('cf-meta-ip');
     await res.arrayBuffer();
     const total = performance.now() - t0;
     // Для чужого домену браузер без Timing-Allow-Origin дає нулі — тоді беремо повний час запиту.
@@ -98,7 +114,18 @@ async function measurePing(s: SpeedServer, c: NetworkConfig): Promise<number> {
     const rtt = entry && entry.responseStart > 0 && entry.requestStart > 0 ? entry.responseStart - entry.requestStart : total;
     if (i > 0) samples.push(rtt);
   }
-  return median(samples);
+  return { pingMs: median(samples), ip };
+}
+
+/** IPv4-адреса з відповіді виду "ip=1.2.3.4" (cdn-cgi/trace); null — якщо не вдалося. */
+async function fetchIpv4(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(withBust(url), { cache: 'no-store', signal: AbortSignal.timeout(3000) });
+    if (!res.ok) return null;
+    return /^ip=(.+)$/m.exec(await res.text())?.[1]?.trim() ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Завантаження: кілька паралельних потоків читають файл до дедлайну. */
@@ -211,6 +238,8 @@ export type SpeedPhase = 'ping' | 'download' | 'upload';
 /** Проміжний стан тесту: яка фаза йде і які числа вже виміряно. */
 export interface SpeedProgress {
   phase: SpeedPhase;
+  /** Відомий після фази пінгу. */
+  network?: ConnectionKind;
   downloadMbps?: number;
 }
 
@@ -220,12 +249,17 @@ async function runOn(
   onProgress?: (progress: SpeedProgress) => void,
 ): Promise<SpeedResult> {
   onProgress?.({ phase: 'ping' });
-  const pingMs = await measurePing(s, c);
-  onProgress?.({ phase: 'download' });
+  const [{ pingMs, ip }, ipv4] = await Promise.all([measurePing(s, c), fetchIpv4(c.ipv4TraceUrl)]);
+  const connection = connectionInfo();
+  const network = detectConnectionKind([ip, ipv4], connection?.type);
+  const base = { pingMs, server: s.name, connection, network };
+  // Мобільний інтернет не підходить за будь-якої швидкості — не витрачаємо людині трафік на замір.
+  if (c.rejectMobile && network.kind === 'mobile') return { ...base, downloadMbps: null, uploadMbps: null };
+  onProgress?.({ phase: 'download', network });
   const downloadMbps = await measureDownload(s, c);
-  onProgress?.({ phase: 'upload', downloadMbps });
+  onProgress?.({ phase: 'upload', network, downloadMbps });
   const uploadMbps = await measureUpload(s, c);
-  return { downloadMbps, uploadMbps, pingMs, server: s.name, connection: connectionInfo() };
+  return { ...base, downloadMbps, uploadMbps };
 }
 
 /**

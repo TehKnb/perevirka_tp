@@ -2,7 +2,7 @@ import type { AppConfig } from '../config';
 import type { MicKind } from '../media/micClassify';
 import type { NetworkState } from '../network/speedTest';
 import { speedProblems } from '../network/speedTest';
-import { hints, internetSlowHint } from '../texts';
+import { hints, internetMobileHint, internetSlowHint } from '../texts';
 import type { FrameMetrics } from '../vision/metrics';
 import type { HeadsetVisualResult } from './headsetVisual';
 import { checkResolution } from './resolution';
@@ -195,9 +195,15 @@ export function evaluateChecks(ctx: CheckContext, c: Criteria, cam: CameraLimits
   else if (n.status === 'error') add('internet', 'hard', 'fail', null, hints.internetFailed);
   else {
     const r = n.result;
-    const value = `${r.downloadMbps.toFixed(1)}/${r.uploadMbps.toFixed(1)} Мбіт/с (пінг ${r.pingMs.toFixed(0)} мс, ${r.server})`;
-    const ok = speedProblems(r, net).length === 0;
-    add('internet', 'hard', ok ? 'pass' : 'fail', value, internetSlowHint(r));
+    const problems = speedProblems(r, net);
+    if (problems.includes('mobile') && r.network.kind === 'mobile') {
+      const value = `мобільний (${r.network.operator ?? r.network.source})`;
+      add('internet', 'hard', 'fail', value, internetMobileHint(r.network.operator));
+    } else {
+      const fmt = (v: number | null) => (v === null ? '—' : v.toFixed(1));
+      const value = `${fmt(r.downloadMbps)}/${fmt(r.uploadMbps)} Мбіт/с (пінг ${r.pingMs.toFixed(0)} мс, ${r.server}, ${r.network.kind})`;
+      add('internet', 'hard', problems.length === 0 ? 'pass' : 'fail', value, internetSlowHint(r));
+    }
   }
 
   // Гарнітура: лише за назвою мікрофона; 'unknown' не блокує й не підказує.

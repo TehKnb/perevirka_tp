@@ -47,7 +47,7 @@ function ctx(patch: (m: FrameMetrics) => void = () => {}, extra: Partial<CheckCo
     camera: { width: 1920, height: 1080 },
     micKind: 'headset',
     headsetVisual: 'unknown',
-    network: { status: 'done', result: { downloadMbps: 50, uploadMbps: 20, pingMs: 20, server: 'cloudflare', connection: null } },
+    network: { status: 'done', result: { downloadMbps: 50, uploadMbps: 20, pingMs: 20, server: 'cloudflare', connection: null, network: { kind: 'other' } } },
     ...extra,
   };
 }
@@ -170,12 +170,33 @@ describe('evaluateChecks', () => {
     expect(get(run(ctx(undefined, { network: { status: 'checking' } })), 'internet').status).toBe('pending');
     expect(get(run(ctx(undefined, { network: { status: 'error' } })), 'internet').hint).toBe(hints.internetFailed);
     const slow = get(
-      run(ctx(undefined, { network: { status: 'done', result: { downloadMbps: 50, uploadMbps: 4, pingMs: 30, server: 'cloudflare', connection: null } } })),
+      run(ctx(undefined, { network: { status: 'done', result: { downloadMbps: 50, uploadMbps: 4, pingMs: 30, server: 'cloudflare', connection: null, network: { kind: 'other' } } } })),
       'internet',
     );
     expect(slow.status).toBe('fail');
     expect(slow.hint).toContain('віддача 4');
     expect(get(run(ctx()), 'internet').status).toBe('pass');
+  });
+
+  it('інтернет: мобільний не підходить, навіть без замірів швидкості', () => {
+    const c = get(
+      run(ctx(undefined, {
+        network: {
+          status: 'done',
+          result: {
+            downloadMbps: null,
+            uploadMbps: null,
+            pingMs: 30,
+            server: 'cloudflare',
+            connection: null,
+            network: { kind: 'mobile', operator: 'lifecell', source: 'ip' },
+          },
+        },
+      })),
+      'internet',
+    );
+    expect(c.status).toBe('fail');
+    expect(c.hint).toContain('мобільний інтернет (lifecell)');
   });
 
   it('обличчя темне / пересвічене, контражур', () => {
