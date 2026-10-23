@@ -1,4 +1,5 @@
-import { CHECK_ORDER, evaluateChecks, type CheckId } from '../checks/criteria';
+import { evaluateChecks, type CheckId } from '../checks/criteria';
+import { CHECK_GROUPS, groupStatus, type GroupId } from '../checks/groups';
 import type { HeadsetVisualResult } from '../checks/headsetVisual';
 import { contourStateFor, initialSetupState, stepSetup, type SetupResult, type SetupState } from '../checks/stability';
 import { config } from '../config';
@@ -9,14 +10,13 @@ import { classifyMicLabel } from '../media/micClassify';
 import type { MediaManager } from '../media/mediaManager';
 import { runSpeedTest } from '../network/runSpeedTest';
 import type { NetworkState } from '../network/speedTest';
-import { checkLabels, hints, t } from '../texts';
+import { checkLabels, groupLabels, groupStatusLabels, hints, t } from '../texts';
 import { createCaptureControls } from './captureControls';
 import { createNetworkPanel } from './networkPanel';
 import { byId } from '../ui/dom';
+import { iconSvg } from '../ui/icons';
 import { Analyzer, type AnalysisTick } from '../vision/analyzer';
 import type { VisionModels } from '../vision/models';
-
-const ICONS = { pass: '✓', fail: '✗', checking: '…' } as const;
 
 /**
  * Екран 3: дзеркальне відео, контур, безперервна перевірка критеріїв і одна головна підказка.
@@ -27,7 +27,7 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
   const video = byId<HTMLVideoElement>('setup-video');
   const loading = byId('setup-loading');
   const mainHint = byId('main-hint');
-  const checklist = byId('checklist');
+  const groupsBox = byId('check-groups');
   const netPanel = createNetworkPanel();
   const capture = createCaptureControls(media, video);
   const view = new ContourView(byId('contour-svg') as unknown as SVGSVGElement);
@@ -37,23 +37,47 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
     microphone: () => `${media.audioLabel || '—'} (${classifyMicLabel(media.audioLabel)})`,
   });
 
-  // Пункти чекліста створюємо один раз, далі лише оновлюємо стан.
-  // Інтернет показуємо окремим блоком із виміряними числами, тому в чеклісті його немає.
+  // Групи й пункти чекліста створюємо один раз, далі лише оновлюємо стан (значок малює CSS за data-status).
+  // Інтернет показуємо окремим блоком із виміряними числами, тому в групах його немає.
   const items = new Map<CheckId, HTMLLIElement>();
-  for (const id of CHECK_ORDER) {
-    if (id === 'internet') continue;
-    const li = document.createElement('li');
-    li.dataset.status = 'checking';
-    const icon = document.createElement('span');
-    icon.className = 'check-icon';
-    icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = ICONS.checking;
-    const label = document.createElement('span');
-    label.textContent = checkLabels[id];
-    li.append(icon, label);
-    items.set(id, li);
-  }
-  checklist.replaceChildren(...items.values());
+  const groupPills = new Map<GroupId, HTMLElement>();
+  groupsBox.replaceChildren(
+    ...CHECK_GROUPS.map((group) => {
+      const section = document.createElement('section');
+      section.className = 'check-group';
+      section.setAttribute('aria-label', groupLabels[group.id]);
+      const head = document.createElement('div');
+      head.className = 'group-head';
+      const icon = document.createElement('span');
+      icon.className = 'group-icon';
+      icon.innerHTML = iconSvg(group.icon);
+      const title = document.createElement('h3');
+      title.className = 'group-title';
+      title.textContent = groupLabels[group.id];
+      const pill = document.createElement('span');
+      pill.className = 'group-pill';
+      pill.dataset.status = 'none';
+      pill.textContent = groupStatusLabels.none;
+      groupPills.set(group.id, pill);
+      head.append(icon, title, pill);
+      const list = document.createElement('ul');
+      list.className = 'checklist';
+      for (const id of group.checks) {
+        const li = document.createElement('li');
+        li.dataset.status = 'checking';
+        const mark = document.createElement('span');
+        mark.className = 'check-icon';
+        mark.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.textContent = checkLabels[id];
+        li.append(mark, label);
+        items.set(id, li);
+        list.append(li);
+      }
+      section.append(head, list);
+      return section;
+    }),
+  );
 
   let analyzer: Analyzer | null = null;
   let active = false;
@@ -96,8 +120,14 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
       if (!li || (li.dataset.status === check.status && li.dataset.severity === check.severity)) continue;
       li.dataset.status = check.status;
       li.dataset.severity = check.severity;
-      const icon = check.status === 'fail' && check.severity === 'soft' ? '!' : ICONS[check.status];
-      li.firstElementChild!.textContent = icon;
+    }
+    const byId = new Map(result.checks.map((c) => [c.id, c]));
+    for (const group of CHECK_GROUPS) {
+      const status = groupStatus(group.checks.flatMap((id) => byId.get(id) ?? []));
+      const pill = groupPills.get(group.id)!;
+      if (pill.dataset.status === status) continue;
+      pill.dataset.status = status;
+      pill.textContent = groupStatusLabels[status];
     }
     view.setState(contourStateFor(result, iou, config.criteria.minIou, config.criteria.almostIouMargin));
   }
@@ -128,6 +158,7 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
       state = initialSetupState();
       mainHint.textContent = t.setup.intro;
       if (media.videoTrack) video.srcObject = new MediaStream([media.videoTrack]);
+      capture.refresh();
       loading.textContent = t.setup.loading;
       loading.hidden = false;
 
@@ -159,7 +190,15 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
       video.srcObject = null;
     },
 
-    /** Скріншот і запис для відправки експертам (етап 5). */
+    /** Фото й запис для відправки експертам. */
     getCaptures: () => capture.getCaptures(),
+
+    /** Результат тесту інтернету (для відправки). */
+    getNetwork: () => network,
+
+    /** Натиснуто «Надіслати на перевірку» (фото й звук готові). */
+    onSend(handler: () => void) {
+      capture.onSend = handler;
+    },
   };
 }

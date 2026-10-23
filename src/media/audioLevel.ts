@@ -46,6 +46,11 @@ export function isTooQuiet(
   return max < cfg.minSpeechDb;
 }
 
+/** Скільки цілих секунд лишилося до мінімальної тривалості запису (0 — можна зупиняти). */
+export function secondsUntilMin(elapsedMs: number, minSec: number): number {
+  return Math.max(0, Math.ceil(minSec - elapsedMs / 1000));
+}
+
 /** «0:07 / 0:30» */
 export function formatTimer(elapsedMs: number, maxSec: number): string {
   const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;

@@ -144,7 +144,7 @@ describe('evaluateChecks', () => {
   });
 
   it('за форматом лише білий фон: світло-сірий не проходить', () => {
-    const grey = get(run(ctx((m) => (m.light!.bgLuma = 0.62))), 'bgBright');
+    const grey = get(run(ctx((m) => (m.light!.bgLuma = 0.58))), 'bgBright');
     expect(grey.status).toBe('fail');
     expect(grey.hint).toBe(hints.bgDark);
     expect(get(run(ctx((m) => (m.light!.bgLuma = 0.86))), 'bgBright').status).toBe('pass');

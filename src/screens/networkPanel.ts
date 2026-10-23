@@ -1,7 +1,7 @@
 import { config } from '../config';
 import type { ConnectionKind } from '../network/mobileNetwork';
 import { speedProblems, type NetworkState, type SpeedProgress } from '../network/speedTest';
-import { t } from '../texts';
+import { groupStatusLabels, t } from '../texts';
 import { byId } from '../ui/dom';
 
 type RowId = 'download' | 'upload';
@@ -11,6 +11,7 @@ type RowStatus = 'pending' | 'pass' | 'fail';
 export function createNetworkPanel() {
   const panel = byId('net-panel');
   const status = byId('net-status');
+  const pill = byId('net-pill');
   const retest = byId<HTMLButtonElement>('btn-retest-internet');
   const c = config.network;
 
@@ -49,7 +50,14 @@ export function createNetworkPanel() {
     (Object.keys(rows) as RowId[]).forEach((id) => setRow(id, undefined, 'pending'));
   }
 
+  /** Плашка стану в заголовку блоку, як у групах чекліста. */
+  function setPill(s: 'none' | 'checking' | 'ok' | 'attention') {
+    pill.dataset.status = s;
+    pill.textContent = groupStatusLabels[s];
+  }
+
   reset();
+  setPill('none');
   status.textContent = t.setup.netWaiting;
 
   return {
@@ -61,6 +69,7 @@ export function createNetworkPanel() {
     progress(p: SpeedProgress) {
       if (p.phase === 'ping') reset();
       panel.dataset.status = 'checking';
+      setPill('checking');
       retest.hidden = true;
       // Під час пінгу визначаємо IP-адресу, тож для людини це «перевіряємо підключення».
       status.textContent =
@@ -75,6 +84,7 @@ export function createNetworkPanel() {
       if (state.status === 'checking') return;
       if (state.status === 'error') {
         panel.dataset.status = 'fail';
+        setPill('attention');
         status.textContent = t.setup.netError;
         retest.hidden = false;
         return;
@@ -87,6 +97,7 @@ export function createNetworkPanel() {
       setRow('upload', r.uploadMbps ?? undefined, r.uploadMbps === null ? 'pending' : problems.includes('upload') ? 'fail' : 'pass');
       const ok = problems.length === 0;
       panel.dataset.status = ok ? 'pass' : 'fail';
+      setPill(ok ? 'ok' : 'attention');
       status.textContent = ok ? t.setup.netOk : problems.includes('mobile') ? t.setup.netMobile : t.setup.netSlow;
       retest.hidden = ok;
     },

@@ -17,6 +17,19 @@ export function isMobileDevice(env: DeviceEnv): boolean {
   return false;
 }
 
+/** Браузер — лише щоб показати, де саме в ньому вмикається доступ до камери. */
+export type BrowserId = 'chrome' | 'edge' | 'opera' | 'firefox' | 'safari' | 'other';
+
+export function detectBrowser(userAgent: string): BrowserId {
+  if (/Edg(e|A|iOS)?\//.test(userAgent)) return 'edge';
+  if (/OPR\/|Opera/.test(userAgent)) return 'opera';
+  if (/Firefox\/|FxiOS/.test(userAgent)) return 'firefox';
+  // Yandex, Brave, Vivaldi тощо на Chromium мають той самий значок біля адреси, що й Chrome.
+  if (/Chrome\/|CriOS/.test(userAgent)) return 'chrome';
+  if (/Safari\//.test(userAgent)) return 'safari';
+  return 'other';
+}
+
 export type SupportProblem = 'insecure' | 'unsupported';
 
 /** Чи може сторінка взагалі запитати камеру й мікрофон. */

@@ -20,41 +20,69 @@
       </div>
     </header>
     <main class="page">
-      <!-- Телефон або планшет -->
-      <section class="screen card" data-screen="mobile" hidden>
-        <h1 tabindex="-1" data-t="mobile.title"></h1>
-        <p data-t="mobile.body"></p>
-      </section>
-
       <!-- 1. Старт -->
-      <section class="screen card" data-screen="start" hidden>
-        <h1 tabindex="-1" data-t="start.title"></h1>
-        <p class="lead" data-t="start.lead"></p>
-        <ol class="steps">
-          <li data-t="start.step1"></li>
-          <li data-t="start.step2"></li>
-          <li data-t="start.step3"></li>
-          <li data-t="start.step4"></li>
-        </ol>
+      <section class="screen card card-wide" id="screen-start" data-screen="start" hidden>
+        <header class="start-head">
+          <h1 tabindex="-1" data-t="start.title"></h1>
+          <!-- Телефон або планшет: лише приклади, пройти перевірку — з комп'ютера -->
+          <p class="phone-note" id="phone-note" role="note" hidden data-t="mobile.title"></p>
+          <p class="lead" data-t="start.lead"></p>
+        </header>
+
+        <div class="start-info">
+          <div class="start-info-main">
+            <section class="info-card" aria-labelledby="how-title">
+              <h2 class="info-card-title" id="how-title">
+                <span class="icon-badge" data-icon="list"></span>
+                <span data-t="start.howTitle"></span>
+              </h2>
+              <ol class="num-steps">
+                <li data-t="start.step1"></li>
+                <li data-t="start.step2"></li>
+                <li>
+                  <span data-t="start.step3"></span> <strong class="step-note" data-t="start.step3Note"></strong>
+                  <span data-t="start.step3End"></span>
+                </li>
+              </ol>
+            </section>
+            <section class="info-card discord-card">
+              <span class="icon-badge icon-badge-discord" data-icon="discord"></span>
+              <div>
+                <p class="discord-title" data-t="common.discordTitle"></p>
+                <p class="discord-text" data-t="common.discordText"></p>
+              </div>
+            </section>
+          </div>
+          <aside class="important-card" role="note">
+            <span class="important-icon" data-icon="alert"></span>
+            <p class="important-title" data-t="common.importantTitle"></p>
+            <p class="important-text" data-t="common.importantText"></p>
+          </aside>
+        </div>
+
         <section class="examples" aria-labelledby="examples-title">
           <h2 id="examples-title" data-t="start.examplesTitle"></h2>
-          <figure class="example">
-            <div class="example-photos">
-              <img src="/examples/windows-1.jpg" width="459" height="254" data-t-alt="start.exampleAltWindows" alt="" />
-              <img src="/examples/windows-2.jpg" width="459" height="254" data-t-alt="start.exampleAltWindows" alt="" />
-            </div>
-            <figcaption><strong data-t="start.windowsTitle"></strong> <span data-t="start.windowsText"></span></figcaption>
-          </figure>
-          <figure class="example">
-            <div class="example-photos">
-              <img src="/examples/macos-1.jpg" width="459" height="255" data-t-alt="start.exampleAltMac" alt="" />
-              <img src="/examples/macos-2.jpg" width="459" height="255" data-t-alt="start.exampleAltMac" alt="" />
-            </div>
-            <figcaption><strong data-t="start.macTitle"></strong> <span data-t="start.macText"></span></figcaption>
-          </figure>
+          <div class="example-grid">
+            <figure class="example">
+              <div class="example-photos">
+                <img src="/examples/windows-1.jpg" width="459" height="254" data-t-alt="start.exampleAltWindows" alt="" />
+                <img src="/examples/windows-2.jpg" width="459" height="254" data-t-alt="start.exampleAltWindows" alt="" />
+              </div>
+              <figcaption><strong data-t="start.windowsTitle"></strong> <span data-t="start.windowsText"></span></figcaption>
+            </figure>
+            <figure class="example">
+              <div class="example-photos">
+                <img src="/examples/macos-1.jpg" width="459" height="255" data-t-alt="start.exampleAltMac" alt="" />
+                <img src="/examples/macos-2.jpg" width="459" height="255" data-t-alt="start.exampleAltMac" alt="" />
+              </div>
+              <figcaption><strong data-t="start.macTitle"></strong> <span data-t="start.macText"></span></figcaption>
+            </figure>
+          </div>
         </section>
-        <p class="notice" id="consent-notice" data-t="start.notice"></p>
-        <button type="button" class="btn btn-primary" id="btn-start" data-t="start.begin"></button>
+        <div class="start-actions">
+          <p class="notice" id="consent-notice" data-t="start.notice"></p>
+          <button type="button" class="btn btn-primary btn-wide" id="btn-start" data-t="start.begin"></button>
+        </div>
       </section>
 
       <!-- 2. Доступ до пристроїв -->
@@ -66,6 +94,10 @@
         <div id="devices-error" class="alert alert-error" role="alert" hidden>
           <h2 id="devices-error-title"></h2>
           <p id="devices-error-body"></p>
+          <!-- Відмова в доступі: як увімкнути його вручну в цьому браузері -->
+          <p class="error-steps-lead" id="devices-error-steps-lead" hidden></p>
+          <ol class="error-steps" id="devices-error-steps" hidden></ol>
+          <p class="error-footer" id="devices-error-footer" hidden></p>
           <button type="button" class="btn btn-primary" id="btn-devices-retry" data-t="devices.retry"></button>
         </div>
 
@@ -96,6 +128,7 @@
       <!-- 3. Налаштування -->
       <section class="screen card card-wide" data-screen="setup" hidden>
         <h1 tabindex="-1" data-t="setup.title"></h1>
+        <p class="lead setup-lead" data-t="setup.lead"></p>
         <div class="setup-layout">
           <div class="stage-wrap">
             <div class="stage" id="setup-stage">
@@ -104,12 +137,16 @@
               <div id="setup-loading" class="stage-overlay" role="status"></div>
             </div>
 
-            <!-- Скріншот і запис голосу: кнопки активні, коли всі пункти виконано 3 с поспіль -->
+            <!-- Фото й запис голосу. «Зробити фото» активна, коли всі пункти виконано 3 с поспіль; звук — будь-коли -->
             <div class="capture" id="capture">
               <p class="capture-status" id="capture-status" role="status" aria-live="polite"></p>
               <div class="capture-buttons">
-                <button type="button" class="btn btn-primary" id="btn-screenshot" disabled data-t="capture.screenshot"></button>
-                <button type="button" class="btn btn-primary" id="btn-record" disabled data-t="capture.record"></button>
+                <button type="button" class="btn btn-outline btn-icon" id="btn-screenshot" disabled>
+                  <span class="icon" data-icon="camera"></span><span class="btn-label" data-t="capture.screenshot"></span>
+                </button>
+                <button type="button" class="btn btn-outline btn-icon" id="btn-record" disabled>
+                  <span class="icon" data-icon="mic"></span><span class="btn-label" data-t="capture.record"></span>
+                </button>
               </div>
 
               <div class="recording" id="recording" hidden>
@@ -134,36 +171,147 @@
                   <audio controls id="audio-player"></audio>
                 </div>
               </div>
+
+              <div class="send-row">
+                <button type="button" class="btn btn-primary btn-icon btn-wide" id="btn-send" disabled>
+                  <span class="icon" data-icon="send"></span><span class="btn-label" data-t="capture.send"></span>
+                </button>
+              </div>
             </div>
           </div>
           <aside class="setup-side">
+            <h2 class="side-title"><span data-t="setup.checklistTitle"></span> <span class="side-note" data-t="setup.checklistNote"></span></h2>
             <p class="main-hint" id="main-hint" role="status" aria-live="polite" data-t="setup.intro"></p>
             <p class="reminder small" data-t="setup.reminder"></p>
-            <h2 class="checklist-title" data-t="setup.checklistTitle"></h2>
-            <ul class="checklist" id="checklist"></ul>
-            <section class="net-panel" id="net-panel" aria-labelledby="net-title" data-status="checking">
-              <h2 class="checklist-title" id="net-title" data-t="setup.netTitle"></h2>
+            <div class="check-groups" id="check-groups">
+              <!-- Групи пунктів створює setupScreen.ts -->
+            </div>
+            <section class="check-group net-panel" id="net-panel" aria-labelledby="net-title" data-status="checking">
+              <div class="group-head">
+                <span class="group-icon" data-icon="wifi"></span>
+                <h3 class="group-title" id="net-title"><span data-t="setup.netTitle"></span> <span class="group-note" data-t="setup.netGroupNote"></span></h3>
+                <span class="group-pill" id="net-pill"></span>
+              </div>
               <p class="net-status" id="net-status" role="status" aria-live="polite"></p>
               <dl class="net-values">
                 <div class="net-row" id="net-row-connection">
-                  <dt data-t="setup.netConnection"></dt>
+                  <dt><span class="check-icon" aria-hidden="true"></span><span data-t="setup.netConnection"></span></dt>
                   <dd><span class="net-value" id="net-connection">—</span></dd>
                 </div>
                 <div class="net-row" id="net-row-download">
-                  <dt data-t="setup.netDownload"></dt>
+                  <dt><span class="check-icon" aria-hidden="true"></span><span data-t="setup.netDownload"></span></dt>
                   <dd><span class="net-value" id="net-download">—</span> <span class="net-need" id="net-need-download"></span></dd>
                 </div>
                 <div class="net-row" id="net-row-upload">
-                  <dt data-t="setup.netUpload"></dt>
+                  <dt><span class="check-icon" aria-hidden="true"></span><span data-t="setup.netUpload"></span></dt>
                   <dd><span class="net-value" id="net-upload">—</span> <span class="net-need" id="net-need-upload"></span></dd>
                 </div>
               </dl>
               <button type="button" class="btn btn-secondary" id="btn-retest-internet" data-t="setup.retestInternet" hidden></button>
             </section>
-            <button type="button" class="btn btn-secondary" id="btn-change-devices" data-t="setup.changeDevices"></button>
+            <button type="button" class="btn btn-secondary btn-change" id="btn-change-devices" data-t="setup.changeDevices"></button>
           </aside>
         </div>
         <div id="debug-panel" class="debug-panel" hidden></div>
+      </section>
+
+      <!-- 4. Форма відправки результатів -->
+      <section class="screen card card-wide submit-card" data-screen="submit" hidden>
+        <form class="submit-main" id="submit-form" novalidate>
+          <div class="submit-head">
+            <span class="icon-badge" data-icon="form"></span>
+            <span class="chip" data-t="submit.step"></span>
+          </div>
+          <h1 tabindex="-1" data-t="submit.title"></h1>
+          <p class="submit-lead">
+            <span data-t="submit.lead"></span>
+            <span class="accent" data-t="submit.leadAccent"></span>
+          </p>
+
+          <div class="form-field">
+            <label for="f-name"><span data-t="submit.nameLabel"></span> <span class="req" aria-hidden="true">*</span></label>
+            <input id="f-name" name="name" type="text" autocomplete="name" maxlength="120" required
+              aria-describedby="f-name-error" data-t-placeholder="submit.namePlaceholder" />
+            <p class="field-error" id="f-name-error" hidden></p>
+          </div>
+
+          <div class="form-field">
+            <label for="f-stream"><span data-t="submit.streamLabel"></span> <span class="req" aria-hidden="true">*</span></label>
+            <input id="f-stream" name="stream" type="text" maxlength="120" required
+              aria-describedby="f-stream-error" data-t-placeholder="submit.streamPlaceholder" />
+            <p class="field-error" id="f-stream-error" hidden></p>
+          </div>
+
+          <div class="form-field">
+            <label class="check-field">
+              <input type="checkbox" id="f-agree" name="agree" aria-describedby="f-agree-error" />
+              <span>
+                <span data-t="submit.agreeBefore"></span><button type="button" class="link-button" id="btn-requirements"
+                  data-t="submit.agreeLink"></button><span data-t="submit.agreeAfter"></span>
+              </span>
+            </label>
+            <p class="field-error" id="f-agree-error" hidden></p>
+          </div>
+
+          <p class="field-error" id="submit-error" role="alert" hidden></p>
+          <button type="submit" class="btn btn-primary btn-icon btn-block" id="btn-submit">
+            <span class="icon" data-icon="send"></span><span class="btn-label" data-t="submit.send"></span>
+          </button>
+          <p class="test-mode small" id="submit-test-mode" data-t="common.testMode"></p>
+          <button type="button" class="back-link" id="btn-submit-back">
+            <span class="icon" data-icon="arrowLeft"></span><span data-t="submit.back"></span>
+          </button>
+        </form>
+
+        <aside class="submit-side">
+          <section class="side-block" aria-labelledby="submit-how-title">
+            <h2 class="info-card-title" id="submit-how-title">
+              <span class="icon-badge" data-icon="shield"></span>
+              <span data-t="submit.howTitle"></span>
+            </h2>
+            <ol class="num-steps">
+              <li data-t="submit.how1"></li>
+              <li data-t="submit.how2"></li>
+              <li data-t="submit.how3"></li>
+            </ol>
+          </section>
+          <section class="side-block side-block-tint">
+            <span class="icon-badge" data-icon="bang"></span>
+            <div>
+              <p class="side-block-title" data-t="common.importantTitle"></p>
+              <p class="side-block-text" data-t="common.importantText"></p>
+            </div>
+          </section>
+          <section class="side-block side-block-tint">
+            <span class="icon-badge icon-badge-discord" data-icon="discord"></span>
+            <div>
+              <p class="side-block-title" data-t="submit.discordTitle"></p>
+              <p class="side-block-text" data-t="submit.discordText"></p>
+            </div>
+          </section>
+        </aside>
+
+        <dialog class="requirements-dialog" id="requirements-dialog" aria-labelledby="requirements-title">
+          <h2 id="requirements-title" data-t="submit.requirementsTitle"></h2>
+          <ul class="requirements-list" id="requirements-list"></ul>
+          <form method="dialog">
+            <button class="btn btn-primary" data-t="submit.requirementsClose"></button>
+          </form>
+        </dialog>
+      </section>
+
+      <!-- 5. Готово -->
+      <section class="screen card done-card" data-screen="done" hidden>
+        <div class="done-emoji" aria-hidden="true">🎉</div>
+        <h1 tabindex="-1" data-t="done.title"></h1>
+        <p data-t="done.body"></p>
+        <section class="info-card discord-card">
+          <span class="icon-badge icon-badge-discord" data-icon="discord"></span>
+          <p class="discord-text" data-t="done.discord"></p>
+        </section>
+        <a class="btn btn-primary" id="done-discord" target="_blank" rel="noopener" hidden data-t="done.openDiscord"></a>
+        <p class="done-early" data-t="done.early"></p>
+        <p class="test-mode small" id="done-test-mode" data-t="common.testMode"></p>
       </section>
     </main>
     <script type="module" src="/src/main.ts"></script>

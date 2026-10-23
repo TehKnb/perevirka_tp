@@ -1,26 +1,32 @@
 import type { SetupResult } from '../checks/stability';
 import { config } from '../config';
-import { formatTimer, isTooQuiet, levelFraction, type LevelSample } from '../media/audioLevel';
+import { formatTimer, isTooQuiet, levelFraction, secondsUntilMin, type LevelSample } from '../media/audioLevel';
 import type { MediaManager } from '../media/mediaManager';
 import { captureFrame, type Screenshot } from '../media/screenshot';
 import { VoiceRecorder, canRecordAudio, type VoiceRecording } from '../media/voiceRecorder';
 import { captureTexts, t } from '../texts';
 import { byId } from '../ui/dom';
 
-/** Те, що піде експертам: скріншот і запис, кожне — з результатом перевірок на свій момент. */
+/**
+ * Те, що піде експертам: скріншот і запис, кожне — з результатом перевірок на свій момент.
+ * Для запису результат може бути null: звук можна записати ще до першого аналізу кадру.
+ */
 export interface Captures {
   screenshot: (Screenshot & { setup: SetupResult }) | null;
-  audio: (VoiceRecording & { setup: SetupResult }) | null;
+  audio: (VoiceRecording & { setup: SetupResult | null }) | null;
 }
 
 /**
  * Кнопки «Зробити скріншот» і «Записати звук» під відео.
- * Активні, коли всі жорсткі критерії виконуються безперервно config.setup.stableMsRequired.
+ * «Зробити скріншот» активна, коли всі жорсткі критерії виконуються безперервно
+ * config.setup.stableMsRequired. «Записати звук» від чекліста не залежить — лише від мікрофона.
  */
 export function createCaptureControls(media: MediaManager, video: HTMLVideoElement) {
   const status = byId('capture-status');
   const btnShot = byId<HTMLButtonElement>('btn-screenshot');
   const btnRecord = byId<HTMLButtonElement>('btn-record');
+  const btnSend = byId<HTMLButtonElement>('btn-send');
+  const label = (btn: HTMLButtonElement) => btn.querySelector<HTMLElement>('.btn-label')!;
   const recordingBox = byId('recording');
   const levelBar = byId('level-bar');
   const timer = byId('rec-timer');
@@ -51,9 +57,10 @@ export function createCaptureControls(media: MediaManager, video: HTMLVideoEleme
   function renderButtons() {
     const busy = recorder.recording;
     btnShot.disabled = !ready || busy;
-    btnRecord.disabled = !ready || busy || !canRecordAudio();
-    btnShot.textContent = captures.screenshot ? captureTexts.retakeScreenshot : t.capture.screenshot;
-    btnRecord.textContent = captures.audio ? captureTexts.rerecord : t.capture.record;
+    btnRecord.disabled = busy || !canRecordAudio() || !media.audioTrack;
+    btnSend.disabled = busy || !captures.screenshot || !captures.audio;
+    label(btnShot).textContent = captures.screenshot ? captureTexts.retakeScreenshot : t.capture.screenshot;
+    label(btnRecord).textContent = captures.audio ? captureTexts.rerecord : t.capture.record;
   }
 
   function renderStatus(result: SetupResult | null) {
@@ -92,7 +99,7 @@ export function createCaptureControls(media: MediaManager, video: HTMLVideoEleme
   });
 
   btnRecord.addEventListener('click', () => {
-    if (!ready || !lastResult || !media.audioTrack) return;
+    if (!media.audioTrack) return;
     message = null;
     try {
       recorder.start(media.audioTrack);
@@ -106,15 +113,26 @@ export function createCaptureControls(media: MediaManager, video: HTMLVideoEleme
     recordStartedAt = performance.now();
     recordingBox.hidden = false;
     louder.hidden = true;
+    renderStop(0);
     renderButtons();
-    btnStop.focus();
     meterLoop();
   });
+
+  /** «Готово» неактивна, доки запис коротший за мінімум; на кнопці — скільки лишилося. */
+  function renderStop(elapsedMs: number) {
+    const left = secondsUntilMin(elapsedMs, config.recording.minDurationSec);
+    const text = left > 0 ? captureTexts.stopIn(left) : t.capture.stop;
+    if (btnStop.textContent !== text) btnStop.textContent = text;
+    const wasDisabled = btnStop.disabled;
+    btnStop.disabled = left > 0;
+    // Коли кнопка стала доступна — переводимо на неї фокус (для клавіатури й читачів екрана).
+    if (wasDisabled && !btnStop.disabled) btnStop.focus();
+  }
 
   async function finishRecording() {
     if (!recorder.recording) return;
     cancelAnimationFrame(rafId);
-    const setup = lastResult!;
+    const setup = lastResult;
     try {
       const rec = await recorder.stop();
       captures.audio = { ...rec, setup };
@@ -131,7 +149,14 @@ export function createCaptureControls(media: MediaManager, video: HTMLVideoEleme
     btnRecord.focus();
   }
 
-  btnStop.addEventListener('click', () => void finishRecording());
+  btnSend.addEventListener('click', () => {
+    if (!btnSend.disabled) controls.onSend?.();
+  });
+
+  btnStop.addEventListener('click', () => {
+    if (secondsUntilMin(recorder.elapsedMs, config.recording.minDurationSec) > 0) return;
+    void finishRecording();
+  });
   recorder.onAutoStop = () => void finishRecording();
 
   /** Індикатор рівня, таймер і підказка «голосніше» — щокадру під час запису. */
@@ -143,6 +168,7 @@ export function createCaptureControls(media: MediaManager, video: HTMLVideoEleme
     levels = levels.filter((s) => s.t >= now - config.recording.levelWindowMs);
     levelBar.style.transform = `scaleX(${levelFraction(db)})`;
     timer.textContent = formatTimer(recorder.elapsedMs, config.recording.maxDurationSec);
+    renderStop(recorder.elapsedMs);
     louder.hidden = !isTooQuiet(levels, recordStartedAt, now, config.recording);
     rafId = requestAnimationFrame(meterLoop);
   }
@@ -150,7 +176,10 @@ export function createCaptureControls(media: MediaManager, video: HTMLVideoEleme
   renderButtons();
   renderStatus(null);
 
-  return {
+  const controls = {
+    /** «Надіслати на перевірку» — фото й звук готові. */
+    onSend: null as (() => void) | null,
+
     /** Викликається на кожному тіку аналізу з поточним результатом перевірок. */
     update(result: SetupResult) {
       lastResult = result;
@@ -160,6 +189,11 @@ export function createCaptureControls(media: MediaManager, video: HTMLVideoEleme
         renderButtons();
       }
       renderStatus(result);
+    },
+
+    /** Вхід на екран: мікрофон уже ввімкнено, тож «Записати звук» можна активувати одразу. */
+    refresh() {
+      renderButtons();
     },
 
     /** Вихід з екрана: незавершений запис скасовуємо. */
@@ -177,4 +211,5 @@ export function createCaptureControls(media: MediaManager, video: HTMLVideoEleme
       return captures;
     },
   };
+  return controls;
 }

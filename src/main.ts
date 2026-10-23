@@ -7,18 +7,26 @@ import { isMobileDevice, readDeviceEnv } from './env';
 import { MediaManager } from './media/mediaManager';
 import { createDevicesScreen } from './screens/devicesScreen';
 import { createSetupScreen } from './screens/setupScreen';
+import { createSubmitScreen } from './screens/submitScreen';
 import { applyTexts, byId, showScreen } from './ui/dom';
+import { applyIcons } from './ui/icons';
 import { loadVisionModels, type VisionModels } from './vision/models';
 
 function boot() {
   applyTexts();
-
-  if (config.ui.blockMobile && isMobileDevice(readDeviceEnv())) {
-    showScreen('mobile');
-    return;
-  }
+  applyIcons();
 
   byId('consent-notice').hidden = !config.ui.showConsentNotice;
+
+  // Телефон чи планшет: лише приклади правильного налаштування й пояснення, що пройти
+  // можна з комп'ютера. Кнопки «Почати» немає, тож камеру, мікрофон і моделі не запитуємо.
+  if (config.ui.blockMobile && isMobileDevice(readDeviceEnv())) {
+    byId('phone-note').hidden = false;
+    byId('screen-start').classList.add('phone-view');
+    byId('btn-start').remove();
+    showScreen('start');
+    return;
+  }
 
   const media = new MediaManager();
 
@@ -46,6 +54,36 @@ function boot() {
     showScreen('devices');
     void devices.enter();
   });
+
+  // Фото й звук готові → форма відправки. Камеру не вимикаємо: людина може повернутися й перезняти.
+  const submit = createSubmitScreen({
+    collect: () => ({
+      captures: setup.getCaptures(),
+      network: setup.getNetwork(),
+      devices: { camera: media.videoLabel, microphone: media.audioLabel },
+      userAgent: navigator.userAgent,
+    }),
+    onBack: () => {
+      showScreen('setup');
+      void setup.enter();
+    },
+    onDone: () => {
+      media.stop();
+      showScreen('done');
+    },
+  });
+
+  setup.onSend(() => {
+    setup.leave();
+    showScreen('submit');
+    submit.enter();
+  });
+
+  const discord = byId<HTMLAnchorElement>('done-discord');
+  if (config.ui.discordUrl) {
+    discord.href = config.ui.discordUrl;
+    discord.hidden = false;
+  }
 
   byId('btn-change-devices').addEventListener('click', () => {
     setup.leave();

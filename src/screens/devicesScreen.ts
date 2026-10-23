@@ -1,9 +1,17 @@
 import { checkResolution } from '../checks/resolution';
 import { config } from '../config';
+import { detectBrowser } from '../env';
 import { classifyMicLabel } from '../media/micClassify';
 import { MediaAccessError, classifyMediaError, type MediaErrorInfo } from '../media/mediaErrors';
 import type { DeviceOption, MediaManager } from '../media/mediaManager';
-import { mediaErrorText, t } from '../texts';
+import {
+  blockedKind,
+  denialMode,
+  queryMediaPermissions,
+  shouldRetry,
+  watchMediaPermissions,
+} from '../media/permissions';
+import { mediaErrorText, permissionHelp, t } from '../texts';
 import { byId } from '../ui/dom';
 
 /** Екран 2: запит доступу, вибір камери й мікрофона, зрозумілі помилки. */
@@ -12,6 +20,9 @@ export function createDevicesScreen(media: MediaManager, onNext: () => void) {
   const errorBox = byId('devices-error');
   const errorTitle = byId('devices-error-title');
   const errorBody = byId('devices-error-body');
+  const errorStepsLead = byId('devices-error-steps-lead');
+  const errorSteps = byId('devices-error-steps');
+  const errorFooter = byId('devices-error-footer');
   const ready = byId('devices-ready');
   const video = byId<HTMLVideoElement>('devices-video');
   const selectCamera = byId<HTMLSelectElement>('select-camera');
@@ -38,7 +49,16 @@ export function createDevicesScreen(media: MediaManager, onNext: () => void) {
     showError({ code: 'notFound', kind });
   };
 
+  /** Стеження за дозволами, поки на екрані пояснення про відмову. */
+  let stopWatching: (() => void) | null = null;
+  /** Номер показаної помилки: відповідь Permissions API для старої помилки ігноруємо. */
+  let errorSeq = 0;
+
   function setState(state: 'pending' | 'error' | 'ready') {
+    if (state !== 'error') {
+      stopWatching?.();
+      stopWatching = null;
+    }
     pending.hidden = state !== 'pending';
     errorBox.hidden = state !== 'error';
     ready.hidden = state !== 'ready';
@@ -50,8 +70,43 @@ export function createDevicesScreen(media: MediaManager, onNext: () => void) {
     const text = mediaErrorText(info);
     errorTitle.textContent = text.title;
     errorBody.textContent = text.body;
+    errorStepsLead.hidden = errorSteps.hidden = errorFooter.hidden = true;
     setState('error');
     byId('btn-devices-retry').focus();
+    if (info.code === 'denied') void explainDenial(++errorSeq);
+    else errorSeq++;
+  }
+
+  /**
+   * Браузер не дав доступу: дізнаємося, чи запам'ятав він заборону, показуємо інструкцію
+   * саме для цього браузера й стежимо — щойно доступ дозволять, продовжуємо самі.
+   */
+  async function explainDenial(seq: number) {
+    const perms = await queryMediaPermissions();
+    if (seq !== errorSeq || errorBox.hidden) return;
+    const autoContinue = perms.camera !== 'unknown' || perms.microphone !== 'unknown';
+    const mode = denialMode(perms);
+    const help = permissionHelp(mode, mode === 'blocked' ? blockedKind(perms) : 'both', detectBrowser(navigator.userAgent), autoContinue);
+    errorTitle.textContent = help.title;
+    errorBody.textContent = help.body;
+    errorStepsLead.textContent = help.stepsLead;
+    errorStepsLead.hidden = !help.stepsLead;
+    errorSteps.replaceChildren(
+      ...help.steps.map((step) => {
+        const li = document.createElement('li');
+        li.textContent = step;
+        return li;
+      }),
+    );
+    errorSteps.hidden = help.steps.length === 0;
+    errorFooter.textContent = help.footer;
+    errorFooter.hidden = !help.footer;
+
+    if (!autoContinue) return;
+    stopWatching?.();
+    stopWatching = watchMediaPermissions((now) => {
+      if (seq === errorSeq && !errorBox.hidden && shouldRetry(perms, now)) void requestAccess();
+    });
   }
 
   async function requestAccess() {

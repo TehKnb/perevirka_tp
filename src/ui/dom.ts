@@ -14,10 +14,14 @@ export function applyTexts(root: ParentNode = document) {
     if (typeof value === 'string') el.textContent = value;
     else console.warn(`Немає тексту для ключа "${el.dataset.t}"`);
   });
-  // Альтернативний текст зображень — з атрибута data-t-alt.
+  // Альтернативний текст зображень — з атрибута data-t-alt, підказка в полі — з data-t-placeholder.
   root.querySelectorAll<HTMLElement>('[data-t-alt]').forEach((el) => {
     const value = lookup(el.dataset.tAlt ?? '');
     if (typeof value === 'string') el.setAttribute('alt', value);
+  });
+  root.querySelectorAll<HTMLElement>('[data-t-placeholder]').forEach((el) => {
+    const value = lookup(el.dataset.tPlaceholder ?? '');
+    if (typeof value === 'string') el.setAttribute('placeholder', value);
   });
   document.title = t.app.title;
 }
@@ -28,7 +32,7 @@ function lookup(path: string): unknown {
   }, t);
 }
 
-export type ScreenId = 'mobile' | 'start' | 'devices' | 'setup';
+export type ScreenId = 'start' | 'devices' | 'setup' | 'submit' | 'done';
 
 /** Показує один екран, решту ховає, і переводить фокус на його заголовок (для читачів екрана). */
 export function showScreen(id: ScreenId) {
@@ -37,4 +41,5 @@ export function showScreen(id: ScreenId) {
   });
   const heading = document.querySelector<HTMLElement>(`[data-screen="${id}"] h1`);
   heading?.focus();
+  window.scrollTo({ top: 0 });
 }

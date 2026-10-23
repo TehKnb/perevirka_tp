@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { audioExtension, formatTimer, isTooQuiet, levelFraction, pickAudioMime, rmsDb } from './audioLevel';
+import { audioExtension, formatTimer, isTooQuiet, levelFraction, pickAudioMime, rmsDb, secondsUntilMin } from './audioLevel';
 
 describe('rmsDb', () => {
   it('тиша → −100', () => {
@@ -58,6 +58,18 @@ describe('isTooQuiet', () => {
   });
   it('голосно було давно, зараз тихо → підказка', () => {
     expect(isTooQuiet(hist([[500, -20], [3500, -60], [5900, -58]]), 0, 6000, cfg)).toBe(true);
+  });
+});
+
+describe('secondsUntilMin', () => {
+  it('рахує цілі секунди до мінімуму вгору', () => {
+    expect(secondsUntilMin(0, 10)).toBe(10);
+    expect(secondsUntilMin(100, 10)).toBe(10);
+    expect(secondsUntilMin(9001, 10)).toBe(1);
+  });
+  it('після мінімуму — 0', () => {
+    expect(secondsUntilMin(10000, 10)).toBe(0);
+    expect(secondsUntilMin(25000, 10)).toBe(0);
   });
 });
 
