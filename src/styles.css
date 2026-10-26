@@ -53,6 +53,11 @@ body {
   line-height: 1.5;
 }
 
+/* Масштаб усієї сторінки на великих екранах (--zoom задає src/ui/scale.ts, від 1 до 1.5) */
+body {
+  zoom: var(--zoom, 1);
+}
+
 /* Шапка бренду */
 .brand-bar {
   background: var(--brand);
@@ -92,11 +97,12 @@ body {
 }
 
 .page {
-  min-height: calc(100vh - 64px);
+  /* vh усередині zoom теж масштабується, тому ділимо на --zoom */
+  min-height: calc(100vh / var(--zoom, 1) - 65px);
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 40px 16px 48px;
+  padding: 20px 16px 24px;
 }
 
 [hidden] {
@@ -477,6 +483,11 @@ input:focus-visible,
   width: 100%;
 }
 
+.btn-small {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
 /* Повідомлення */
 .alert {
   border-radius: 8px;
@@ -588,24 +599,67 @@ input[type='text'] {
   margin-top: 24px;
 }
 
-/* Екран налаштування */
-.setup-lead {
-  max-width: 760px;
-  margin-bottom: 24px;
+/* Екран налаштування: групи пунктів ліворуч і праворуч від відео — усе видно без прокрутки */
+.setup-card {
+  padding: 22px 26px 26px;
 }
 
-.setup-layout {
+.setup-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.setup-head h1 {
+  font-size: 26px;
+  margin-bottom: 4px;
+}
+
+.setup-lead {
+  font-size: 15px;
+  color: var(--muted);
+  margin: 0;
+  max-width: 720px;
+}
+
+.setup-head .btn {
+  flex: none;
+}
+
+.setup-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
-  gap: 28px;
+  grid-template-columns: 268px minmax(0, 1fr) 268px;
+  grid-template-areas: 'left stage right';
+  gap: 18px;
   align-items: start;
+}
+
+.setup-grid > .setup-col:first-child {
+  grid-area: left;
+}
+
+.setup-grid > .stage-wrap {
+  grid-area: stage;
+}
+
+.setup-grid > .setup-col:last-child {
+  grid-area: right;
+}
+
+.setup-col,
+#groups-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .stage-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
 }
 
 /* Рамка має точно співвідношення сторін камери (задається з JS),
@@ -682,25 +736,21 @@ input[type='text'] {
 }
 
 .capture-status {
-  font-weight: 600;
-  margin-bottom: 12px;
+  font-size: 15px;
+  color: var(--muted);
+  margin-bottom: 10px;
 }
 
 .capture-buttons {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .capture-buttons .btn {
-  min-width: 220px;
-}
-
-.send-row {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
+  padding: 10px 18px;
+  font-size: 15px;
 }
 
 .recording {
@@ -795,22 +845,12 @@ input[type='text'] {
   margin-top: 8px;
 }
 
-/* Права колонка: підказки алгоритму */
-.side-title {
-  font-size: 18px;
-  margin-bottom: 10px;
-}
-
-.side-note {
-  font-weight: 400;
-  color: var(--muted);
-  font-size: 15px;
-}
-
+/* Головна підказка під відео */
 .main-hint {
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 600;
-  margin-bottom: 12px;
+  text-align: center;
+  margin: 2px 0 0;
 }
 
 .reminder {
@@ -818,61 +858,47 @@ input[type='text'] {
   border-left: 3px solid var(--brand);
   border-radius: 8px;
   padding: 8px 12px;
-  margin: 0 0 16px;
+  margin: 0;
 }
 
-.check-groups {
-  background: var(--info-bg);
-  border: 1px solid var(--info-border);
-  border-radius: 16px;
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-
-.check-groups .check-group + .check-group {
-  border-top: 1px solid var(--info-border);
-}
-
+/* Картки груп пунктів */
 .check-group {
-  padding: 14px 16px;
-}
-
-.net-panel {
   background: var(--info-bg);
   border: 1px solid var(--info-border);
-  border-radius: 16px;
-  margin-bottom: 16px;
+  border-radius: 14px;
+  padding: 10px 12px;
 }
 
 .group-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
 .group-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   background: #e2e9f3;
   color: var(--brand);
 }
 
 .group-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
 }
 
 .group-title {
   flex: 1;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--brand);
+  line-height: 1.2;
 }
 
 .group-note {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 400;
   color: var(--muted);
 }
@@ -880,9 +906,9 @@ input[type='text'] {
 .group-pill {
   flex: none;
   font-family: var(--font-small);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 3px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
   background: #e6ebf2;
   color: var(--muted);
@@ -907,13 +933,14 @@ input[type='text'] {
 .checklist {
   list-style: none;
   margin: 0;
-  padding: 0 0 0 48px;
-  font-size: 15px;
+  padding: 0 0 0 4px;
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .checklist li {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: baseline;
   padding: 2px 0;
 }
@@ -921,13 +948,13 @@ input[type='text'] {
 /* Значок стану пункту: зелена галочка, червоний хрестик, помаранчевий «!» для порад */
 .check-icon {
   flex: none;
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   line-height: 1;
   color: var(--white);
@@ -950,7 +977,7 @@ input[type='text'] {
 [data-status='fail'] > dt > .check-icon {
   background: none;
   color: var(--error-mark);
-  font-size: 15px;
+  font-size: 14px;
 }
 
 [data-status='fail'] > .check-icon::before,
@@ -961,7 +988,7 @@ input[type='text'] {
 [data-status='fail'][data-severity='soft'] > .check-icon {
   background: var(--warn-mark);
   color: var(--white);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 [data-status='fail'][data-severity='soft'] > .check-icon::before {
@@ -974,8 +1001,8 @@ input[type='text'] {
 
 /* Блок «Інтернет» */
 .net-status {
-  font-size: 14px;
-  margin: 0 0 6px 48px;
+  font-size: 13px;
+  margin: 0 0 4px;
   color: var(--muted);
 }
 
@@ -984,20 +1011,21 @@ input[type='text'] {
 }
 
 .net-values {
-  margin: 0 0 0 48px;
-  font-size: 15px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .net-row {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  padding: 2px 0;
+  padding: 2px 0 2px 4px;
 }
 
 .net-row dt {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: baseline;
 }
 
@@ -1021,17 +1049,12 @@ input[type='text'] {
 
 .net-need {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
 }
 
 .net-panel .btn {
-  margin: 10px 0 0 48px;
-}
-
-.btn-change {
-  display: block;
-  margin: 0 auto;
+  margin: 8px 0 0;
 }
 
 /* Форма відправки */
@@ -1365,8 +1388,16 @@ input[type='text'] {
   fill: #ff3b3b;
 }
 
+@media (max-width: 1100px) {
+  .setup-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'stage stage'
+      'left right';
+  }
+}
+
 @media (max-width: 960px) {
-  .setup-layout,
   .debug-panel,
   .start-info,
   .submit-card {
@@ -1410,8 +1441,19 @@ input[type='text'] {
     grid-template-columns: 1fr;
   }
 
-  .btn-wide,
-  .capture-buttons .btn {
+  .setup-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'stage'
+      'left'
+      'right';
+  }
+
+  .setup-head {
+    flex-direction: column;
+  }
+
+  .btn-wide {
     min-width: 0;
     width: 100%;
   }
@@ -1426,7 +1468,6 @@ input[type='text'] {
 .example figcaption span,
 .capture-item figcaption,
 .capture-item-title,
-.side-note,
 .group-note,
 .field-error,
 .debug-legend,

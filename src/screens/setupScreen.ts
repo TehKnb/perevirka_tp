@@ -27,7 +27,13 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
   const video = byId<HTMLVideoElement>('setup-video');
   const loading = byId('setup-loading');
   const mainHint = byId('main-hint');
-  const groupsBox = byId('check-groups');
+  // Кадрування й Освітлення — ліворуч від відео, Фон і Гарнітура — праворуч (над блоком інтернету).
+  const groupColumns: Record<GroupId, HTMLElement> = {
+    framing: byId('groups-left'),
+    light: byId('groups-left'),
+    background: byId('groups-right'),
+    headset: byId('groups-right'),
+  };
   const netPanel = createNetworkPanel();
   const capture = createCaptureControls(media, video);
   const view = new ContourView(byId('contour-svg') as unknown as SVGSVGElement);
@@ -41,43 +47,41 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
   // Інтернет показуємо окремим блоком із виміряними числами, тому в групах його немає.
   const items = new Map<CheckId, HTMLLIElement>();
   const groupPills = new Map<GroupId, HTMLElement>();
-  groupsBox.replaceChildren(
-    ...CHECK_GROUPS.map((group) => {
-      const section = document.createElement('section');
-      section.className = 'check-group';
-      section.setAttribute('aria-label', groupLabels[group.id]);
-      const head = document.createElement('div');
-      head.className = 'group-head';
-      const icon = document.createElement('span');
-      icon.className = 'group-icon';
-      icon.innerHTML = iconSvg(group.icon);
-      const title = document.createElement('h3');
-      title.className = 'group-title';
-      title.textContent = groupLabels[group.id];
-      const pill = document.createElement('span');
-      pill.className = 'group-pill';
-      pill.dataset.status = 'none';
-      pill.textContent = groupStatusLabels.none;
-      groupPills.set(group.id, pill);
-      head.append(icon, title, pill);
-      const list = document.createElement('ul');
-      list.className = 'checklist';
-      for (const id of group.checks) {
-        const li = document.createElement('li');
-        li.dataset.status = 'checking';
-        const mark = document.createElement('span');
-        mark.className = 'check-icon';
-        mark.setAttribute('aria-hidden', 'true');
-        const label = document.createElement('span');
-        label.textContent = checkLabels[id];
-        li.append(mark, label);
-        items.set(id, li);
-        list.append(li);
-      }
-      section.append(head, list);
-      return section;
-    }),
-  );
+  for (const group of CHECK_GROUPS) {
+    const section = document.createElement('section');
+    section.className = 'check-group';
+    section.setAttribute('aria-label', groupLabels[group.id]);
+    const head = document.createElement('div');
+    head.className = 'group-head';
+    const icon = document.createElement('span');
+    icon.className = 'group-icon';
+    icon.innerHTML = iconSvg(group.icon);
+    const title = document.createElement('h3');
+    title.className = 'group-title';
+    title.textContent = groupLabels[group.id];
+    const pill = document.createElement('span');
+    pill.className = 'group-pill';
+    pill.dataset.status = 'none';
+    pill.textContent = groupStatusLabels.none;
+    groupPills.set(group.id, pill);
+    head.append(icon, title, pill);
+    const list = document.createElement('ul');
+    list.className = 'checklist';
+    for (const id of group.checks) {
+      const li = document.createElement('li');
+      li.dataset.status = 'checking';
+      const mark = document.createElement('span');
+      mark.className = 'check-icon';
+      mark.setAttribute('aria-hidden', 'true');
+      const label = document.createElement('span');
+      label.textContent = checkLabels[id];
+      li.append(mark, label);
+      items.set(id, li);
+      list.append(li);
+    }
+    section.append(head, list);
+    groupColumns[group.id].append(section);
+  }
 
   let analyzer: Analyzer | null = null;
   let active = false;
@@ -106,7 +110,7 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
     const vh = video.videoHeight;
     if (!vw || !vh) return;
     stage.style.aspectRatio = `${vw} / ${vh}`;
-    stage.style.width = `min(100%, calc(70vh * ${vw / vh}))`;
+    stage.style.width = `min(100%, calc(60vh * ${vw / vh}))`;
     // Той самий buildContour використовує аналізатор для IoU.
     view.render(buildContour(vw / vh, config.contour), vw / vh);
   }

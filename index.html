@@ -125,17 +125,27 @@
         </div>
       </section>
 
-      <!-- 3. Налаштування -->
-      <section class="screen card card-wide" data-screen="setup" hidden>
-        <h1 tabindex="-1" data-t="setup.title"></h1>
-        <p class="lead setup-lead" data-t="setup.lead"></p>
-        <div class="setup-layout">
+      <!-- 3. Налаштування: групи пунктів праворуч і ліворуч від відео, щоб усе було видно без прокрутки -->
+      <section class="screen card card-wide setup-card" data-screen="setup" hidden>
+        <header class="setup-head">
+          <div>
+            <h1 tabindex="-1" data-t="setup.title"></h1>
+            <p class="setup-lead" data-t="setup.lead"></p>
+          </div>
+          <button type="button" class="btn btn-secondary btn-small" id="btn-change-devices" data-t="setup.changeDevices"></button>
+        </header>
+        <div class="setup-grid">
+          <div class="setup-col" id="groups-left" aria-label="Підказки алгоритму">
+            <!-- Кадрування й Освітлення створює setupScreen.ts -->
+          </div>
+
           <div class="stage-wrap">
             <div class="stage" id="setup-stage">
               <video id="setup-video" class="mirrored" autoplay muted playsinline></video>
               <svg id="contour-svg" class="contour" aria-hidden="true" preserveAspectRatio="none"></svg>
               <div id="setup-loading" class="stage-overlay" role="status"></div>
             </div>
+            <p class="main-hint" id="main-hint" role="status" aria-live="polite" data-t="setup.intro"></p>
 
             <!-- Фото й запис голосу. «Зробити фото» активна, коли всі пункти виконано 3 с поспіль; звук — будь-коли -->
             <div class="capture" id="capture">
@@ -146,6 +156,9 @@
                 </button>
                 <button type="button" class="btn btn-outline btn-icon" id="btn-record" disabled>
                   <span class="icon" data-icon="mic"></span><span class="btn-label" data-t="capture.record"></span>
+                </button>
+                <button type="button" class="btn btn-primary btn-icon" id="btn-send" disabled>
+                  <span class="icon" data-icon="send"></span><span class="btn-label" data-t="capture.send"></span>
                 </button>
               </div>
 
@@ -171,20 +184,12 @@
                   <audio controls id="audio-player"></audio>
                 </div>
               </div>
-
-              <div class="send-row">
-                <button type="button" class="btn btn-primary btn-icon btn-wide" id="btn-send" disabled>
-                  <span class="icon" data-icon="send"></span><span class="btn-label" data-t="capture.send"></span>
-                </button>
-              </div>
             </div>
           </div>
-          <aside class="setup-side">
-            <h2 class="side-title"><span data-t="setup.checklistTitle"></span> <span class="side-note" data-t="setup.checklistNote"></span></h2>
-            <p class="main-hint" id="main-hint" role="status" aria-live="polite" data-t="setup.intro"></p>
-            <p class="reminder small" data-t="setup.reminder"></p>
-            <div class="check-groups" id="check-groups">
-              <!-- Групи пунктів створює setupScreen.ts -->
+
+          <div class="setup-col">
+            <div id="groups-right">
+              <!-- Фон і Гарнітура створює setupScreen.ts -->
             </div>
             <section class="check-group net-panel" id="net-panel" aria-labelledby="net-title" data-status="checking">
               <div class="group-head">
@@ -207,10 +212,10 @@
                   <dd><span class="net-value" id="net-upload">—</span> <span class="net-need" id="net-need-upload"></span></dd>
                 </div>
               </dl>
-              <button type="button" class="btn btn-secondary" id="btn-retest-internet" data-t="setup.retestInternet" hidden></button>
+              <button type="button" class="btn btn-secondary btn-small" id="btn-retest-internet" data-t="setup.retestInternet" hidden></button>
             </section>
-            <button type="button" class="btn btn-secondary btn-change" id="btn-change-devices" data-t="setup.changeDevices"></button>
-          </aside>
+            <p class="reminder small" data-t="setup.reminder"></p>
+          </div>
         </div>
         <div id="debug-panel" class="debug-panel" hidden></div>
       </section>

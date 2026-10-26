@@ -10,11 +10,13 @@ import { createSetupScreen } from './screens/setupScreen';
 import { createSubmitScreen } from './screens/submitScreen';
 import { applyTexts, byId, showScreen } from './ui/dom';
 import { applyIcons } from './ui/icons';
+import { initScale } from './ui/scale';
 import { loadVisionModels, type VisionModels } from './vision/models';
 
 function boot() {
   applyTexts();
   applyIcons();
+  initScale();
 
   byId('consent-notice').hidden = !config.ui.showConsentNotice;
 
