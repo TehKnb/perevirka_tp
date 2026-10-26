@@ -79,6 +79,9 @@ function boot() {
     submit.enter();
   });
 
+  // Рядок «Тестовий режим…» — лише коли відправку вимкнено в налаштуваннях.
+  byId('submit-test-mode').hidden = byId('done-test-mode').hidden = !config.submit.testMode;
+
   const discord = byId<HTMLAnchorElement>('done-discord');
   if (config.ui.discordUrl) {
     discord.href = config.ui.discordUrl;

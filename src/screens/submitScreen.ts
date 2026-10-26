@@ -79,7 +79,7 @@ export function createSubmitScreen(opts: {
         name: v.name.trim().replace(/\s+/g, ' '),
         stream: v.stream.trim().replace(/\s+/g, ' '),
         submittedAt: new Date().toISOString(),
-      });
+      }, config.submit);
       opts.onDone();
     } catch (err) {
       console.error('Не вдалося надіслати результати', err);

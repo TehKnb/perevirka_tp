@@ -7,3 +7,7 @@ public/mediapipe/
 public/speedtest/
 *.log
 .DS_Store
+# Секрети (токен Telegram-бота тощо) — лише локально й у змінних оточення Vercel
+.env
+.env.*
+!.env.example

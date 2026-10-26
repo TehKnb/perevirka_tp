@@ -223,11 +223,6 @@ p {
   justify-content: center;
 }
 
-.step-note {
-  color: var(--brand);
-  font-size: 15px;
-}
-
 /* Інформаційні картки */
 .info-card {
   background: var(--info-bg);

@@ -1,5 +1,9 @@
+import type { AppConfig } from '../config';
+import { detectBrowser } from '../env';
+import { audioExtension } from '../media/audioLevel';
 import type { Captures } from '../screens/captureControls';
 import type { NetworkState } from '../network/speedTest';
+import { checkLabels } from '../texts';
 
 export interface SubmitFormValues {
   name: string;
@@ -38,21 +42,76 @@ export interface Submission {
   submittedAt: string;
 }
 
+const BROWSER_NAMES = { chrome: 'Chrome', edge: 'Edge', opera: 'Opera', firefox: 'Firefox', safari: 'Safari', other: 'інший' };
+
+function osName(ua: string): string {
+  if (/Windows/.test(ua)) return 'Windows';
+  if (/Mac OS X|Macintosh/.test(ua)) return 'macOS';
+  if (/Linux/.test(ua)) return 'Linux';
+  return 'інша ОС';
+}
+
 /**
- * Відправка результатів. Поки ТЕСТОВИЙ РЕЖИМ: нічого нікуди не надсилається,
- * лише коротке зведення в консоль браузера. Куди відправляти — додамо пізніше (етап 5).
+ * Короткий підсумок для техпідтримки (піде в підпис до фото в Telegram):
+ * що не пройшло на момент фото, інтернет, пристрої, браузер, тривалість запису.
  */
-export async function submitResults(s: Submission): Promise<{ test: true }> {
-  console.info('[Тестовий режим] Результати не надсилаються:', {
-    name: s.name,
-    stream: s.stream,
-    screenshotBytes: s.captures.screenshot?.blob.size ?? 0,
-    audioBytes: s.captures.audio?.blob.size ?? 0,
-    audioMime: s.captures.audio?.mime,
-    network: s.network,
-    devices: s.devices,
-    submittedAt: s.submittedAt,
-  });
-  await new Promise((r) => setTimeout(r, 600));
-  return { test: true };
+export function buildSummary(s: Omit<Submission, 'name' | 'stream' | 'submittedAt'>): string {
+  const lines: string[] = [];
+  const setup = s.captures.screenshot?.setup;
+  if (setup) {
+    const failed = setup.checks.filter((c) => c.status === 'fail');
+    const hard = failed.filter((c) => c.severity === 'hard').map((c) => checkLabels[c.id]);
+    const soft = failed.filter((c) => c.severity === 'soft').map((c) => checkLabels[c.id]);
+    lines.push(hard.length === 0 ? 'Перевірки на момент фото: усі обов’язкові виконано' : `Не виконано на момент фото: ${hard.join(', ')}`);
+    if (soft.length > 0) lines.push(`Поради: ${soft.join(', ')}`);
+  }
+  const n = s.network;
+  if (n?.status === 'done') {
+    const r = n.result;
+    const kind =
+      r.network.kind === 'mobile'
+        ? `мобільний${r.network.operator ? ` (${r.network.operator})` : ''}`
+        : r.network.kind === 'other'
+          ? 'не мобільний'
+          : 'тип не визначено';
+    const speed =
+      r.downloadMbps !== null && r.uploadMbps !== null
+        ? `${r.downloadMbps.toFixed(1)} / ${r.uploadMbps.toFixed(1)} Мбіт/с`
+        : 'швидкість не міряли';
+    lines.push(`Інтернет: ${speed}, ${kind}`);
+  } else {
+    lines.push('Інтернет: не перевірено');
+  }
+  lines.push(`Камера: ${s.devices.camera || '—'}`);
+  lines.push(`Мікрофон: ${s.devices.microphone || '—'}`);
+  if (s.captures.audio) lines.push(`Запис голосу: ${Math.round(s.captures.audio.durationMs / 1000)} с`);
+  lines.push(`Браузер: ${BROWSER_NAMES[detectBrowser(s.userAgent)]}, ${osName(s.userAgent)}`);
+  return lines.join('\n');
+}
+
+/**
+ * Відправка результатів: форма з фото й аудіо йде на нашу функцію (api/submit.js),
+ * а вона пересилає все в Telegram. Токен бота на сторінку не потрапляє.
+ * У тестовому режимі (config.submit.testMode) нічого не надсилається.
+ */
+export async function submitResults(s: Submission, c: AppConfig['submit']): Promise<void> {
+  const shot = s.captures.screenshot;
+  const audio = s.captures.audio;
+  if (!shot || !audio) throw new Error('Немає фото або аудіо');
+
+  if (c.testMode) {
+    console.info('[Тестовий режим] Результати не надсилаються:', { name: s.name, stream: s.stream, summary: buildSummary(s) });
+    await new Promise((r) => setTimeout(r, 600));
+    return;
+  }
+
+  const body = new FormData();
+  body.append('name', s.name);
+  body.append('stream', s.stream);
+  body.append('summary', buildSummary(s));
+  body.append('submittedAt', s.submittedAt);
+  body.append('photo', shot.blob, 'photo.jpg');
+  body.append('audio', audio.blob, `audio.${audioExtension(audio.mime)}`);
+  const res = await fetch(c.endpoint, { method: 'POST', body });
+  if (!res.ok) throw new Error(`submit HTTP ${res.status}`);
 }
