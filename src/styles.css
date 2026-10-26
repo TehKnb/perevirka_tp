@@ -1230,8 +1230,15 @@ input[type='text'] {
 }
 
 .done-card .btn {
-  display: inline-block;
   margin-bottom: 20px;
+}
+
+.btn-discord {
+  background: var(--discord);
+}
+
+.btn-discord:hover {
+  background: #4752c4;
 }
 
 .done-early {
