@@ -1,42 +1,50 @@
 /*
- * Оформлення за бренд-буком «Конс на Бі$» і концептом інтерфейсу.
+ * Оформлення за бренд-буком «Конс на Бі$» і концептом інтерфейсу — темна тема,
+ * як на сайті клубу (kons-na-bis.com): чорне тло, білий текст, фіолетово-синій акцент кнопок сайту.
  * Кольори бренду: темно-синій #00285A, чорний #000000, білий #FFFFFF.
  * Шрифти: Commissioner — основний, Roboto Condensed — для дрібного тексту.
  * Зелений, червоний і помаранчевий — лише службові кольори статусів (пройдено / ні / порада).
  */
 :root {
   --brand: #00285a;
-  --brand-dark: #001a3d;
-  --brand-tint: rgb(0 40 90 / 5%);
   --black: #000000;
   --white: #ffffff;
+  /* Акцент — колір кнопок сайту клубу */
+  --accent: #5a4bd1;
+  --accent-light: #b9b0ff;
+  --accent-soft: rgb(90 75 209 / 28%);
 
-  --bg: #f4f7fb;
-  --card: var(--white);
-  --text: var(--black);
-  --muted: #4a5a70;
-  --border: #d9e1ec;
-  --primary: var(--brand);
-  --primary-hover: var(--brand-dark);
-  --focus: var(--brand);
-  --ok: #157a3d;
-  --ok-bg: #e7f5ec;
-  --warn: #9a4b00;
+  --bg: #131315;
+  --surface: rgb(255 255 255 / 5%);
+  --surface-strong: #1f1f24;
+  --surface-border: rgb(255 255 255 / 9%);
+  --card: transparent;
+  --text: #f3f3f6;
+  --muted: #a3a3b0;
+  --border: rgb(255 255 255 / 14%);
+  --brand-tint: var(--accent-soft);
+  --primary: var(--white);
+  --primary-text: #111114;
+  --primary-hover: #e4e4ea;
+  --focus: #8f82ff;
+  --ok: #3ecf72;
+  --ok-bg: rgb(62 207 114 / 14%);
+  --warn: #f5b33d;
   --warn-mark: #f29d1a;
-  --warn-bg: #fff4e5;
-  --error: #b42318;
-  --error-mark: #e0362c;
-  --error-bg: #fdecea;
-  --info-bg: #f1f5fb;
-  --info-border: #dfe7f2;
-  --important-bg: #fcedf2;
-  --important-border: #efc3d1;
+  --warn-bg: rgb(245 179 61 / 14%);
+  --error: #ff7a72;
+  --error-mark: #ff5a52;
+  --error-bg: rgb(255 90 82 / 13%);
+  --info-bg: var(--surface);
+  --info-border: var(--surface-border);
+  --important-bg: rgb(255 90 82 / 9%);
+  --important-border: rgb(255 90 82 / 32%);
   --discord: #5865f2;
   --radius: 20px;
 
   --font-main: 'Commissioner Variable', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
   --font-small: 'Roboto Condensed Variable', 'Arial Narrow', system-ui, sans-serif;
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 * {
@@ -46,7 +54,9 @@
 html,
 body {
   margin: 0;
-  background: var(--bg);
+  background: radial-gradient(1100px 520px at 18% -8%, rgb(90 75 209 / 16%), transparent 70%),
+    radial-gradient(900px 480px at 100% 100%, rgb(90 75 209 / 9%), transparent 70%), var(--bg);
+  background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-main);
   font-size: 17px;
@@ -60,7 +70,7 @@ body {
 
 /* Шапка бренду */
 .brand-bar {
-  background: var(--brand);
+  background: transparent;
   color: var(--white);
 }
 
@@ -113,10 +123,9 @@ body {
   width: 100%;
   max-width: 720px;
   background: var(--card);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius);
   padding: 32px;
-  box-shadow: 0 8px 24px rgb(0 40 90 / 8%);
 }
 
 .card-wide {
@@ -125,9 +134,9 @@ body {
 
 h1 {
   font-size: 32px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.2;
-  color: var(--brand);
+  color: var(--text);
   margin: 0 0 12px;
 }
 
@@ -138,7 +147,7 @@ h1:focus {
 h2 {
   font-size: 19px;
   font-weight: 600;
-  color: var(--brand);
+  color: var(--text);
   margin: 0 0 8px;
 }
 
@@ -166,7 +175,6 @@ p {
 /* Іконки */
 .icon,
 .icon-badge,
-.group-icon,
 .important-icon {
   display: inline-flex;
   align-items: center;
@@ -183,8 +191,8 @@ p {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: var(--brand);
-  color: var(--white);
+  background: var(--accent-soft);
+  color: var(--accent-light);
 }
 
 .icon-badge svg {
@@ -220,8 +228,8 @@ p {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: var(--brand);
-  color: var(--white);
+  background: var(--accent-soft);
+  color: var(--accent-light);
   font-weight: 700;
   font-size: 15px;
   display: flex;
@@ -253,7 +261,7 @@ p {
 
 .discord-title {
   font-weight: 600;
-  color: var(--brand);
+  color: var(--text);
   margin: 0 0 4px;
 }
 
@@ -281,7 +289,7 @@ p {
   background: linear-gradient(180deg, #f2665d, #d92d2d);
   color: var(--white);
   margin-bottom: 14px;
-  box-shadow: 0 6px 14px rgb(217 45 45 / 30%);
+  box-shadow: 0 6px 18px rgb(217 45 45 / 35%);
 }
 
 .important-icon svg {
@@ -300,7 +308,7 @@ p {
 .important-text {
   font-size: 19px;
   font-weight: 600;
-  color: var(--brand);
+  color: var(--text);
   margin: 0;
 }
 
@@ -341,10 +349,10 @@ p {
 
 .example {
   margin: 0;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
   overflow: hidden;
-  background: var(--white);
+  background: var(--surface);
 }
 
 .example-photos {
@@ -380,7 +388,7 @@ p {
 .notice {
   color: var(--muted);
   font-size: 15px;
-  border-left: 3px solid var(--brand);
+  border-left: 3px solid var(--accent);
   padding-left: 12px;
   margin: 0;
 }
@@ -388,12 +396,12 @@ p {
 /* Телефон або планшет: лише приклади й пояснення, що пройти можна з комп'ютера */
 .phone-note {
   background: var(--brand-tint);
-  border-left: 3px solid var(--brand);
+  border-left: 3px solid var(--accent);
   border-radius: 8px;
   padding: 12px 16px;
   margin: 0 0 20px;
   font-weight: 700;
-  color: var(--brand);
+  color: var(--text);
   text-align: left;
 }
 
@@ -433,13 +441,13 @@ input:focus-visible,
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .btn-primary {
   background: var(--primary);
-  color: #fff;
+  color: var(--primary-text);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -448,23 +456,18 @@ input:focus-visible,
 
 .btn-secondary,
 .btn-outline {
-  background: var(--white);
-  color: var(--primary);
-  border-color: var(--primary);
+  background: transparent;
+  color: var(--text);
+  border-color: rgb(255 255 255 / 70%);
 }
 
 .btn-secondary:hover:not(:disabled),
 .btn-outline:hover:not(:disabled) {
-  background: var(--brand-tint);
+  background: rgb(255 255 255 / 8%);
 }
 
 .btn-outline {
   border-width: 2px;
-  color: var(--text);
-}
-
-.btn-outline .icon {
-  color: var(--brand);
 }
 
 .btn-icon {
@@ -589,9 +592,13 @@ input[type='text'] {
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-strong);
   color: var(--text);
   max-width: 100%;
+}
+
+input::placeholder {
+  color: #7d7d8a;
 }
 
 /* Кнопка «Далі» на екрані пристроїв — з відступом від списку мікрофонів */
@@ -668,8 +675,9 @@ input[type='text'] {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #111;
-  border-radius: 12px;
+  background: #0b0b0d;
+  border: 1px solid var(--surface-border);
+  border-radius: 16px;
   overflow: hidden;
 }
 
@@ -756,9 +764,9 @@ input[type='text'] {
 .recording {
   margin-top: 16px;
   padding: 16px;
-  border: 2px solid var(--primary);
+  border: 1px solid var(--accent);
   border-radius: 16px;
-  background: var(--brand-tint);
+  background: var(--surface);
   text-align: left;
 }
 
@@ -771,7 +779,7 @@ input[type='text'] {
 .level {
   height: 12px;
   border-radius: 6px;
-  background: #dfe5ee;
+  background: rgb(255 255 255 / 10%);
   overflow: hidden;
   margin-bottom: 10px;
 }
@@ -821,7 +829,8 @@ input[type='text'] {
 
 .capture-item {
   margin: 0;
-  border: 1px solid var(--border);
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
   border-radius: 10px;
   padding: 10px;
 }
@@ -854,8 +863,8 @@ input[type='text'] {
 }
 
 .reminder {
-  background: var(--brand-tint);
-  border-left: 3px solid var(--brand);
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
   border-radius: 8px;
   padding: 8px 12px;
   margin: 0;
@@ -863,10 +872,10 @@ input[type='text'] {
 
 /* Картки груп пунктів */
 .check-group {
-  background: var(--info-bg);
-  border: 1px solid var(--info-border);
-  border-radius: 14px;
-  padding: 10px 12px;
+  background: linear-gradient(160deg, rgb(90 75 209 / 9%), rgb(255 255 255 / 3%) 60%);
+  border: 1px solid var(--surface-border);
+  border-radius: 16px;
+  padding: 12px 14px;
 }
 
 .group-head {
@@ -876,24 +885,26 @@ input[type='text'] {
   margin-bottom: 6px;
 }
 
-.group-icon {
-  width: 28px;
+.group-num {
+  flex: none;
+  width: 30px;
   height: 28px;
   border-radius: 8px;
-  background: #e2e9f3;
-  color: var(--brand);
-}
-
-.group-icon svg {
-  width: 16px;
-  height: 16px;
+  background: var(--accent-soft);
+  color: var(--accent-light);
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .group-title {
   flex: 1;
   font-size: 15px;
   font-weight: 600;
-  color: var(--brand);
+  color: var(--text);
   line-height: 1.2;
 }
 
@@ -910,8 +921,8 @@ input[type='text'] {
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #e6ebf2;
-  color: var(--muted);
+  background: rgb(255 255 255 / 8%);
+  color: #c9c9d3;
 }
 
 .group-pill[data-status='ok'] {
@@ -943,6 +954,7 @@ input[type='text'] {
   gap: 8px;
   align-items: baseline;
   padding: 2px 0;
+  color: #dcdce4;
 }
 
 /* Значок стану пункту: зелена галочка, червоний хрестик, помаранчевий «!» для порад */
@@ -958,7 +970,7 @@ input[type='text'] {
   font-weight: 800;
   line-height: 1;
   color: var(--white);
-  background: #c9d2de;
+  background: rgb(185 176 255 / 22%);
   position: relative;
   top: 2px;
 }
@@ -1063,6 +1075,8 @@ input[type='text'] {
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   padding: 0;
   overflow: hidden;
+  border: 1px solid var(--surface-border);
+  background: rgb(255 255 255 / 2%);
 }
 
 .submit-main {
@@ -1081,9 +1095,8 @@ input[type='text'] {
   font-size: 15px;
   padding: 4px 14px;
   border-radius: 999px;
-  background: var(--info-bg);
-  border: 1px solid var(--info-border);
-  color: var(--brand);
+  background: var(--accent-soft);
+  color: var(--accent-light);
 }
 
 .submit-lead {
@@ -1092,7 +1105,7 @@ input[type='text'] {
 
 .submit-lead .accent {
   display: block;
-  color: #2f5c9a;
+  color: var(--accent-light);
 }
 
 .form-field {
@@ -1139,7 +1152,7 @@ input[type='text'] {
   height: 20px;
   margin: 2px 0 0;
   flex: none;
-  accent-color: var(--brand);
+  accent-color: var(--accent);
 }
 
 .link-button,
@@ -1148,7 +1161,7 @@ input[type='text'] {
   background: none;
   border: none;
   padding: 0;
-  color: #2f5c9a;
+  color: var(--accent-light);
   cursor: pointer;
 }
 
@@ -1165,7 +1178,7 @@ input[type='text'] {
 }
 
 .back-link:hover {
-  color: var(--brand);
+  color: var(--text);
 }
 
 .back-link .icon svg {
@@ -1185,7 +1198,7 @@ input[type='text'] {
 }
 
 .submit-side {
-  background: #f6f9fd;
+  background: var(--surface);
   border-left: 1px solid var(--info-border);
   padding: 36px 32px;
   display: flex;
@@ -1204,7 +1217,7 @@ input[type='text'] {
 
 .side-block-title {
   font-weight: 600;
-  color: var(--brand);
+  color: var(--text);
   margin: 0 0 4px;
 }
 
@@ -1219,11 +1232,14 @@ input[type='text'] {
   border: none;
   border-radius: 16px;
   padding: 28px;
-  box-shadow: 0 24px 48px rgb(0 40 90 / 20%);
+  background: var(--surface-strong);
+  color: var(--text);
+  border: 1px solid var(--surface-border);
+  box-shadow: 0 24px 48px rgb(0 0 0 / 50%);
 }
 
 .requirements-dialog::backdrop {
-  background: rgb(0 26 61 / 45%);
+  background: rgb(0 0 0 / 60%);
 }
 
 .requirements-list {
@@ -1266,13 +1282,13 @@ input[type='text'] {
 
 .done-early {
   font-weight: 700;
-  color: var(--brand);
+  color: var(--text);
 }
 
 /* Debug */
 .debug-snapshot {
   grid-column: 1 / -1;
-  background: #eef3fc;
+  background: var(--surface);
   border-radius: 8px;
   padding: 12px;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -1294,13 +1310,16 @@ input[type='text'] {
 }
 
 .debug-snapshot input,
-.debug-snapshot select {
+.debug-snapshot select,
+.debug-snapshot textarea {
   font: inherit;
   font-size: 14px;
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
   min-width: 220px;
+  background: var(--surface-strong);
+  color: var(--text);
 }
 
 .debug-snapshot .btn {
@@ -1326,7 +1345,7 @@ input[type='text'] {
   grid-column: 1 / -1;
   white-space: pre-wrap;
   font-size: 12px;
-  background: #f6f7f9;
+  background: var(--surface);
   border-radius: 6px;
   padding: 8px;
   margin: 0;

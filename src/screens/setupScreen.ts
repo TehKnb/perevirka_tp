@@ -14,7 +14,6 @@ import { checkLabels, groupLabels, groupStatusLabels, hints, t } from '../texts'
 import { createCaptureControls } from './captureControls';
 import { createNetworkPanel } from './networkPanel';
 import { byId } from '../ui/dom';
-import { iconSvg } from '../ui/icons';
 import { Analyzer, type AnalysisTick } from '../vision/analyzer';
 import type { VisionModels } from '../vision/models';
 
@@ -47,15 +46,17 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
   // Інтернет показуємо окремим блоком із виміряними числами, тому в групах його немає.
   const items = new Map<CheckId, HTMLLIElement>();
   const groupPills = new Map<GroupId, HTMLElement>();
-  for (const group of CHECK_GROUPS) {
+  CHECK_GROUPS.forEach((group, index) => {
     const section = document.createElement('section');
     section.className = 'check-group';
     section.setAttribute('aria-label', groupLabels[group.id]);
     const head = document.createElement('div');
     head.className = 'group-head';
-    const icon = document.createElement('span');
-    icon.className = 'group-icon';
-    icon.innerHTML = iconSvg(group.icon);
+    // Номер групи (01, 02…) у фіолетовій плашці, як на концепті; інтернет — останній, 05.
+    const num = document.createElement('span');
+    num.className = 'group-num';
+    num.setAttribute('aria-hidden', 'true');
+    num.textContent = String(index + 1).padStart(2, '0');
     const title = document.createElement('h3');
     title.className = 'group-title';
     title.textContent = groupLabels[group.id];
@@ -64,7 +65,7 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
     pill.dataset.status = 'none';
     pill.textContent = groupStatusLabels.none;
     groupPills.set(group.id, pill);
-    head.append(icon, title, pill);
+    head.append(num, title, pill);
     const list = document.createElement('ul');
     list.className = 'checklist';
     for (const id of group.checks) {
@@ -81,7 +82,7 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
     }
     section.append(head, list);
     groupColumns[group.id].append(section);
-  }
+  });
 
   let analyzer: Analyzer | null = null;
   let active = false;

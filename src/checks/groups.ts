@@ -1,4 +1,3 @@
-import type { IconName } from '../ui/icons';
 import type { CheckId, Severity } from './criteria';
 import type { CheckStatus } from './stability';
 
@@ -8,15 +7,14 @@ export type GroupId = 'framing' | 'light' | 'background' | 'headset';
  * Групи чекліста на екрані налаштування. Інтернет — окремим блоком з виміряними числами.
  * Кожен пункт (крім internet) має бути рівно в одній групі — це перевіряє тест.
  */
-export const CHECK_GROUPS: { id: GroupId; icon: IconName; checks: CheckId[] }[] = [
+export const CHECK_GROUPS: { id: GroupId; checks: CheckId[] }[] = [
   {
     id: 'framing',
-    icon: 'camera',
     checks: ['resolution', 'face', 'singlePerson', 'distance', 'center', 'headPose', 'shoulders', 'fit'],
   },
-  { id: 'light', icon: 'bulb', checks: ['faceBrightness', 'lowLight', 'lightEven', 'backlight', 'coldLight'] },
-  { id: 'background', icon: 'image', checks: ['bgBright', 'bgNeutral', 'bgPlain', 'bgObjects'] },
-  { id: 'headset', icon: 'headphones', checks: ['headset'] },
+  { id: 'light', checks: ['faceBrightness', 'lowLight', 'lightEven', 'backlight', 'coldLight'] },
+  { id: 'background', checks: ['bgBright', 'bgNeutral', 'bgPlain', 'bgObjects'] },
+  { id: 'headset', checks: ['headset'] },
 ];
 
 /**
