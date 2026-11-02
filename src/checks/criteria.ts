@@ -163,12 +163,16 @@ export function evaluateChecks(ctx: CheckContext, c: Criteria, cam: CameraLimits
     if (light.faceLuma < c.faceLumaMin) add('faceBrightness', 'hard', 'fail', fl, hints.faceDark);
     else if (light.faceLuma > c.faceLumaMax) add('faceBrightness', 'hard', 'fail', fl, hints.faceBright);
     else add('faceBrightness', 'hard', 'pass', fl, null);
-    // Мало світла: зерно на фоні або камера сама знизила частоту кадрів.
+    // Мало світла: багато зерна на фоні або камера сама знизила частоту кадрів.
     const noisy = light.bgNoise > c.maxBgNoise;
     // Якщо камера й так налаштована на низьку частоту (frameRate у getSettings), ця ознака нічого не каже.
     const nominalOk = ctx.camera.frameRate === undefined || ctx.camera.frameRate >= c.minCameraFps;
-    const slowCamera = nominalOk && m.cameraFps !== null && m.cameraFps < c.minCameraFps;
-    add('lowLight', 'hard', noisy || slowCamera ? 'fail' : 'pass', round(light.bgNoise, 4), hints.lowLight);
+    const fps = nominalOk ? m.cameraFps : null;
+    // Частоту знижує й програмна обробка, тож сама по собі вона доводить нестачу світла лише за дуже низького значення;
+    // інакше потрібне ще й помітне зерно (у темряві камера підсилює сигнал).
+    const tooSlow =
+      fps !== null && (fps < c.criticalCameraFps || (fps < c.minCameraFps && light.bgNoise >= c.suspectBgNoise));
+    add('lowLight', 'hard', noisy || tooSlow ? 'fail' : 'pass', round(light.bgNoise, 4), hints.lowLight);
     add('lightEven', 'hard', light.faceSideDiff <= c.maxFaceSideDiff ? 'pass' : 'fail', round(light.faceSideDiff), hints.lightSide);
     add('backlight', 'hard', light.bgToFace <= c.maxBgToFace ? 'pass' : 'fail', round(light.bgToFace), hints.backlight);
   }

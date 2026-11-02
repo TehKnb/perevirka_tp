@@ -158,7 +158,17 @@ describe('evaluateChecks', () => {
 
   it('мало світла: зерно на фоні або камера знизила частоту кадрів', () => {
     expect(get(run(ctx((m) => (m.light!.bgNoise = 0.05))), 'lowLight').hint).toBe(hints.lowLight);
+    // Низька частота й помітне зерно (0.008) — мало світла.
     expect(get(run(ctx((m) => (m.cameraFps = 12))), 'lowLight').status).toBe('fail');
+    // Замір HP True Vision з програмною обробкою: 16 к/с, але картинка чиста — світла достатньо.
+    const clean = (fps: number) =>
+      get(run(ctx((m) => {
+        m.cameraFps = fps;
+        m.light!.bgNoise = 0.0023;
+      })), 'lowLight').status;
+    expect(clean(16)).toBe('pass');
+    // Дуже низька частота — темно, навіть якщо зерна не видно.
+    expect(clean(8)).toBe('fail');
     // Частота кадрів невідома — вирішує лише шум.
     expect(get(run(ctx((m) => (m.cameraFps = null))), 'lowLight').status).toBe('pass');
     // Камера й так працює на 15 к/с — низька частота не ознака поганого світла.
