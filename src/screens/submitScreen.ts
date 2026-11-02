@@ -1,5 +1,5 @@
 import { config } from '../config';
-import { submitResults, validateSubmitForm, type Submission, type SubmitFormValues } from '../submit/submitForm';
+import { SubmitServerError, submitResults, validateSubmitForm, type Submission, type SubmitFormValues } from '../submit/submitForm';
 import { requirementsList, t } from '../texts';
 import { byId } from '../ui/dom';
 
@@ -83,7 +83,7 @@ export function createSubmitScreen(opts: {
       opts.onDone();
     } catch (err) {
       console.error('Не вдалося надіслати результати', err);
-      submitError.textContent = t.submit.sendError;
+      submitError.textContent = err instanceof SubmitServerError ? t.submit.sendServerError : t.submit.sendError;
       submitError.hidden = false;
     } finally {
       btnSubmit.disabled = false;

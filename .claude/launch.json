@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "node-server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--env-file=.env.local", "server.js"],
+      "port": 3000
+    },
+    {
       "name": "vite-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--port", "5173", "--strictPort"],

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SetupResult } from '../checks/stability';
-import { buildSummary, formErrors, validateSubmitForm } from './submitForm';
+import { buildSummary, formErrors, submitResults, SubmitServerError, validateSubmitForm, type Submission } from './submitForm';
 
 const ok = { name: 'Іван Петренко', stream: 'Потік 1', agreed: true };
 
@@ -69,5 +69,35 @@ describe('buildSummary', () => {
     });
     expect(mobile).toContain('Інтернет: швидкість не міряли, мобільний (lifecell)');
     expect(buildSummary({ ...base, network: null })).toContain('Інтернет: не перевірено');
+  });
+});
+
+describe('submitResults: помилки', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const submission = {
+    name: 'Іван Петренко',
+    stream: 'Потік 7',
+    captures: {
+      screenshot: { blob: new Blob(['x'], { type: 'image/jpeg' }) },
+      audio: { blob: new Blob(['x'], { type: 'audio/mp4' }), mime: 'audio/mp4', durationMs: 10000 },
+    },
+    network: null,
+    devices: { camera: 'cam', microphone: 'mic' },
+    userAgent: 'Windows Chrome',
+    submittedAt: '2026-11-02T00:00:00.000Z',
+  } as unknown as Submission;
+  const submit = { endpoint: '/api/submit', testMode: false } as const;
+
+  it('відповідь сервера з помилкою — збій на нашому боці, а не інтернет учасника', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 405 })));
+    await expect(submitResults(submission, submit)).rejects.toBeInstanceOf(SubmitServerError);
+  });
+
+  it('запит не дійшов до сервера — звичайна помилка мережі', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+    const err = await submitResults(submission, submit).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(TypeError);
+    expect(err).not.toBeInstanceOf(SubmitServerError);
   });
 });

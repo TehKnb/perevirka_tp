@@ -89,6 +89,13 @@ export function buildSummary(s: Omit<Submission, 'name' | 'stream' | 'submittedA
   return lines.join('\n');
 }
 
+/** Сервер отримав запит, але не прийняв його: справа не в інтернеті учасника. */
+export class SubmitServerError extends Error {
+  constructor(readonly status: number) {
+    super(`submit HTTP ${status}`);
+  }
+}
+
 /**
  * Відправка результатів: форма з фото й аудіо йде на нашу функцію (api/submit.js),
  * а вона пересилає все в Telegram. Токен бота на сторінку не потрапляє.
@@ -113,5 +120,5 @@ export async function submitResults(s: Submission, c: AppConfig['submit']): Prom
   body.append('photo', shot.blob, 'photo.jpg');
   body.append('audio', audio.blob, `audio.${audioExtension(audio.mime)}`);
   const res = await fetch(c.endpoint, { method: 'POST', body });
-  if (!res.ok) throw new Error(`submit HTTP ${res.status}`);
+  if (!res.ok) throw new SubmitServerError(res.status);
 }

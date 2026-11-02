@@ -1,12 +1,13 @@
-// Функція Vercel: приймає результати перевірки з форми й пересилає їх у Telegram —
+// Функція відправки (її запускає server.js): приймає результати перевірки з форми й пересилає їх у Telegram —
 // у гілку (topic) групи техпідтримки: спершу фото з підписом (ім'я, пакет/потік, короткий
 // підсумок перевірок), потім аудіозапис.
 //
-// Токен бота й адреса чату — лише в змінних оточення (Vercel → Settings → Environment Variables,
+// Токен бота й адреса чату — лише в змінних оточення (Railway → Variables,
 // локально — .env.local), у код сторінки вони не потрапляють:
 //   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, TELEGRAM_THREAD_ID (необов'язково — без неї в загальний чат).
 
-const MAX_FILE_BYTES = 4 * 1024 * 1024; // запит до функції Vercel — до 4.5 МБ разом
+const MAX_FILE_BYTES = 4 * 1024 * 1024;
+const TELEGRAM_TIMEOUT_MS = 60_000; // щоб сторінка не чекала вічно, якщо Telegram не відповідає
 const MAX_TEXT = 120;
 const MAX_SUMMARY = 700; // підпис до фото в Telegram — до 1024 символів
 
@@ -50,7 +51,11 @@ async function telegram(token, method, fields) {
     if (Array.isArray(v)) body.append(k, v[0], v[1]);
     else body.append(k, String(v));
   }
-  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, { method: 'POST', body });
+  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+    method: 'POST',
+    body,
+    signal: AbortSignal.timeout(TELEGRAM_TIMEOUT_MS),
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.ok) throw new Error(`${method}: ${data.description ?? res.status}`);
   return data.result;
