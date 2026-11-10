@@ -237,6 +237,16 @@ p {
   justify-content: center;
 }
 
+/* Примітка під кроками на стартовому екрані */
+.start-note {
+  background: var(--brand-tint);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 6px 0 0;
+  color: var(--text);
+}
+
 /* Інформаційні картки */
 .info-card {
   background: var(--info-bg);
