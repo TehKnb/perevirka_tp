@@ -78,7 +78,8 @@ export function buildSummary(s: Omit<Submission, 'name' | 'stream' | 'submittedA
       r.downloadMbps !== null && r.uploadMbps !== null
         ? `${r.downloadMbps.toFixed(1)} / ${r.uploadMbps.toFixed(1)} Мбіт/с`
         : 'швидкість не міряли';
-    lines.push(`Інтернет: ${speed}, ${kind}`);
+    const ping = Number.isFinite(r.pingMs) ? `, пінг ${Math.round(r.pingMs)} мс` : '';
+    lines.push(`Інтернет: ${speed}${ping}, ${kind}`);
   } else {
     lines.push('Інтернет: не перевірено');
   }

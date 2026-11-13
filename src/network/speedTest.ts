@@ -6,7 +6,7 @@ export interface SpeedResult {
   /** null — не міряли: виявлено мобільний інтернет. */
   downloadMbps: number | null;
   uploadMbps: number | null;
-  /** Лише для метаданих: на проходження не впливає. */
+  /** Показуємо людині й техпідтримці, але на проходження не впливає. */
   pingMs: number;
   /** Звідки міряли. */
   server: SpeedServer['name'];
@@ -238,8 +238,9 @@ export type SpeedPhase = 'ping' | 'download' | 'upload';
 /** Проміжний стан тесту: яка фаза йде і які числа вже виміряно. */
 export interface SpeedProgress {
   phase: SpeedPhase;
-  /** Відомий після фази пінгу. */
+  /** Відомі після фази пінгу. */
   network?: ConnectionKind;
+  pingMs?: number;
   downloadMbps?: number;
 }
 
@@ -255,9 +256,9 @@ async function runOn(
   const base = { pingMs, server: s.name, connection, network };
   // Мобільний інтернет не підходить за будь-якої швидкості — не витрачаємо людині трафік на замір.
   if (c.rejectMobile && network.kind === 'mobile') return { ...base, downloadMbps: null, uploadMbps: null };
-  onProgress?.({ phase: 'download', network });
+  onProgress?.({ phase: 'download', network, pingMs });
   const downloadMbps = await measureDownload(s, c);
-  onProgress?.({ phase: 'upload', network, downloadMbps });
+  onProgress?.({ phase: 'upload', network, pingMs, downloadMbps });
   const uploadMbps = await measureUpload(s, c);
   return { ...base, downloadMbps, uploadMbps };
 }

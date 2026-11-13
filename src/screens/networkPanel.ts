@@ -20,6 +20,7 @@ export function createNetworkPanel() {
     upload: { row: byId('net-row-upload'), value: byId('net-upload') },
   };
   const connection = { row: byId('net-row-connection'), value: byId('net-connection') };
+  const ping = byId('net-ping');
   byId('net-row-connection').hidden = !c.rejectMobile;
   byId('net-need-download').textContent = t.setup.netNeedMin(c.minDownloadMbps, t.setup.mbps);
   byId('net-need-upload').textContent = t.setup.netNeedMin(c.minUploadMbps, t.setup.mbps);
@@ -27,6 +28,11 @@ export function createNetworkPanel() {
   function setRow(id: RowId, value: number | undefined, rowStatus: RowStatus) {
     rows[id].value.textContent = value === undefined ? '—' : `${value.toFixed(1)} ${t.setup.mbps}`;
     rows[id].row.dataset.status = rowStatus;
+  }
+
+  /** Пінг лише показуємо: на проходження він не впливає, тож рядок без зеленого чи червоного. */
+  function setPing(ms: number | undefined) {
+    ping.textContent = ms === undefined || !Number.isFinite(ms) ? '—' : `${Math.round(ms)} ${t.setup.ms}`;
   }
 
   function setConnection(kind: ConnectionKind | undefined) {
@@ -47,6 +53,7 @@ export function createNetworkPanel() {
 
   function reset() {
     setConnection(undefined);
+    setPing(undefined);
     (Object.keys(rows) as RowId[]).forEach((id) => setRow(id, undefined, 'pending'));
   }
 
@@ -75,6 +82,7 @@ export function createNetworkPanel() {
       status.textContent =
         p.phase === 'ping' ? t.setup.netPhaseConnection : p.phase === 'upload' ? t.setup.netPhaseUpload : t.setup.netPhaseDownload;
       if (p.network) setConnection(p.network);
+      if (p.pingMs !== undefined) setPing(p.pingMs);
       if (p.downloadMbps !== undefined)
         setRow('download', p.downloadMbps, p.downloadMbps >= c.minDownloadMbps ? 'pass' : 'fail');
     },
@@ -92,6 +100,7 @@ export function createNetworkPanel() {
       const r = state.result;
       const problems = speedProblems(r, c);
       setConnection(r.network);
+      setPing(r.pingMs);
       // Швидкість не міряли (мобільний інтернет) — рядки лишаються з прочерком.
       setRow('download', r.downloadMbps ?? undefined, r.downloadMbps === null ? 'pending' : problems.includes('download') ? 'fail' : 'pass');
       setRow('upload', r.uploadMbps ?? undefined, r.uploadMbps === null ? 'pending' : problems.includes('upload') ? 'fail' : 'pass');

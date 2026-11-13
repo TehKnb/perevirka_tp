@@ -117,7 +117,8 @@
 
             <label class="field">
               <span data-t="devices.microphone"></span>
-              <select id="select-mic"></select>
+              <span class="field-hint" id="mic-hint" data-t="devices.micHint"></span>
+              <select id="select-mic" aria-describedby="mic-hint"></select>
             </label>
             <p id="mic-status" class="status" aria-live="polite"></p>
 
@@ -213,6 +214,10 @@
                 <div class="net-row" id="net-row-upload">
                   <dt><span class="check-icon" aria-hidden="true"></span><span data-t="setup.netUpload"></span></dt>
                   <dd><span class="net-value" id="net-upload">—</span> <span class="net-need" id="net-need-upload"></span></dd>
+                </div>
+                <div class="net-row" id="net-row-ping">
+                  <dt><span class="check-icon check-icon-blank" aria-hidden="true"></span><span data-t="setup.netPing"></span></dt>
+                  <dd><span class="net-value" id="net-ping">—</span></dd>
                 </div>
               </dl>
               <button type="button" class="btn btn-secondary btn-small" id="btn-retest-internet" data-t="setup.retestInternet" hidden></button>

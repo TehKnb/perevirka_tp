@@ -52,7 +52,7 @@ describe('buildSummary', () => {
     });
     expect(text).toContain('Не виконано на момент фото: Голова й плечі в контурі');
     expect(text).toContain('Поради: Холодне світло');
-    expect(text).toContain('Інтернет: 43.7 / 61.4 Мбіт/с, не мобільний');
+    expect(text).toContain('Інтернет: 43.7 / 61.4 Мбіт/с, пінг 20 мс, не мобільний');
     expect(text).toContain('Камера: HD Webcam');
     expect(text).toContain('Мікрофон: USB Headset');
     expect(text).toContain('Запис голосу: 12 с');
@@ -67,7 +67,7 @@ describe('buildSummary', () => {
         result: { downloadMbps: null, uploadMbps: null, pingMs: 20, server: 'cloudflare', connection: null, network: { kind: 'mobile', operator: 'lifecell', source: 'ip' } },
       },
     });
-    expect(mobile).toContain('Інтернет: швидкість не міряли, мобільний (lifecell)');
+    expect(mobile).toContain('Інтернет: швидкість не міряли, пінг 20 мс, мобільний (lifecell)');
     expect(buildSummary({ ...base, network: null })).toContain('Інтернет: не перевірено');
   });
 });
