@@ -15,7 +15,7 @@ import { createCaptureControls } from './captureControls';
 import { createNetworkPanel } from './networkPanel';
 import { byId } from '../ui/dom';
 import { Analyzer, type AnalysisTick } from '../vision/analyzer';
-import type { VisionModels } from '../vision/models';
+import { closeVisionModels, loadVisionModels, type VisionModels } from '../vision/models';
 
 /**
  * Екран 3: дзеркальне відео, контур, безперервна перевірка критеріїв і одна головна підказка.
@@ -138,6 +138,7 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
   }
 
   function onTick(tick: AnalysisTick) {
+    gotTick = true;
     const raw = evaluateChecks(
       {
         metrics: tick.metrics,
@@ -157,6 +158,59 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
     capture.update(step.result);
   }
 
+  // Аналіз кадрів не працює (помилки або жодного результату) → перезапуск моделей на CPU,
+  // а якщо й там ні — зрозуміле повідомлення замість вічного «Перевіряємо…».
+  let cpuModels: VisionModels | null = null;
+  let gotTick = false;
+  let watchdog: number | undefined;
+
+  function startAnalysis(models: VisionModels) {
+    loading.hidden = true;
+    mainHint.textContent = hints.checking;
+    debug?.setModels(models);
+    analyzer ??= new Analyzer(models, video);
+    analyzer.onTick = onTick;
+    analyzer.onError = (err) => void analysisFailed(models, err);
+    gotTick = false;
+    analyzer.start();
+    armWatchdog(models);
+  }
+
+  function armWatchdog(models: VisionModels) {
+    window.clearTimeout(watchdog);
+    watchdog = window.setTimeout(() => {
+      if (!active || gotTick) return;
+      // У фоновій вкладці браузер не показує кадри — чекаємо, поки людина повернеться.
+      if (document.visibilityState !== 'visible') return armWatchdog(models);
+      void analysisFailed(models, new Error(`жодного результату аналізу за ${config.analysis.firstTickTimeoutMs} мс`));
+    }, config.analysis.firstTickTimeoutMs);
+  }
+
+  async function analysisFailed(models: VisionModels, err: unknown) {
+    window.clearTimeout(watchdog);
+    analyzer?.stop();
+    analyzer = null;
+    if (!active) return;
+    if (models.delegate !== 'GPU' || cpuModels) {
+      console.error('Аналіз кадрів не працює й на CPU', err);
+      loading.textContent = t.setup.loadError;
+      loading.hidden = false;
+      return;
+    }
+    console.warn('Аналіз кадрів на GPU не працює, перемикаємося на CPU', err);
+    loading.textContent = t.setup.loading;
+    loading.hidden = false;
+    try {
+      cpuModels = await loadVisionModels('CPU');
+    } catch (cpuErr) {
+      console.error('Не вдалося завантажити моделі на CPU', cpuErr);
+      loading.textContent = t.setup.loadError;
+      return;
+    }
+    closeVisionModels(models);
+    if (active) startAnalysis(cpuModels);
+  }
+
   return {
     async enter() {
       active = true;
@@ -169,29 +223,25 @@ export function createSetupScreen(media: MediaManager, getModels: () => Promise<
 
       let models: VisionModels;
       try {
-        models = await getModels();
+        models = cpuModels ?? (await getModels());
       } catch (err) {
         console.error('Не вдалося завантажити моделі', err);
         loading.textContent = t.setup.loadError;
         return;
       }
       if (!active) return;
-      loading.hidden = true;
-      mainHint.textContent = hints.checking;
-      debug?.setModels(models);
 
       // Тест інтернету — після завантаження моделей, щоб вони не заважали заміру.
       if (!network || network.status === 'error') void testNetwork();
 
-      analyzer ??= new Analyzer(models, video);
-      analyzer.onTick = onTick;
-      analyzer.start();
+      startAnalysis(models);
     },
 
     leave() {
       active = false;
       capture.cancel();
       analyzer?.stop();
+      window.clearTimeout(watchdog);
       video.srcObject = null;
     },
 

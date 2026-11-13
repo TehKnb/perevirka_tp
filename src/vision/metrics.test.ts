@@ -67,15 +67,25 @@ describe('computeFrameMetrics', () => {
     expect(metrics.face!.offsetX).toBeLessThan(0);
   });
 
-  it('обирає найбільше обличчя і рахує обидва', () => {
+  it('обирає найбільше обличчя; дрібне (картина на стіні) не рахується як друга людина', () => {
     const small = [
       { x: 0.05, y: 0.05 },
       { x: 0.1, y: 0.1 },
     ];
     const base = syntheticInputs();
     const { metrics } = computeFrameMetrics({ ...base, faces: [small, base.faces[0]!] }, config.analysis);
-    expect(metrics.faces).toBe(2);
+    expect(metrics.faces).toBe(1);
     expect(metrics.face!.box.w).toBeGreaterThan(0.06);
+  });
+
+  it('друге обличчя співмірного розміру окремо — дві людини', () => {
+    const other = [
+      { x: 0.02, y: 0.2 },
+      { x: 0.14, y: 0.5 },
+    ];
+    const base = syntheticInputs();
+    const { metrics } = computeFrameMetrics({ ...base, faces: [base.faces[0]!, other] }, config.analysis);
+    expect(metrics.faces).toBe(2);
   });
 
   it('без сегментації — немає маски й світла, але обличчя є', () => {

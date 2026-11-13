@@ -59,16 +59,19 @@ function preferredDelegate(): Delegate {
   return fromUrl === 'CPU' || fromUrl === 'GPU' ? fromUrl : config.models.delegate;
 }
 
-/** Завантажує моделі з локальних файлів. GPU, якщо не вдалося — CPU. */
-export async function loadVisionModels(): Promise<VisionModels> {
+/**
+ * Завантажує моделі з локальних файлів. GPU, якщо не вдалося — CPU.
+ * only — лише цей делегат, без запасного (перезапуск на CPU, коли на GPU кадри не обробляються).
+ */
+export async function loadVisionModels(only?: Delegate): Promise<VisionModels> {
   const started = performance.now();
   const fileset = await FilesetResolver.forVisionTasks(url(config.models.wasmPath));
-  let delegate = preferredDelegate();
+  let delegate = only ?? preferredDelegate();
   let tasks: Awaited<ReturnType<typeof create>>;
   try {
     tasks = await create(fileset, delegate);
   } catch (err) {
-    if (delegate === 'CPU') throw err;
+    if (delegate === 'CPU' || only) throw err;
     console.warn('GPU-делегат недоступний, перемикаємося на CPU', err);
     delegate = 'CPU';
     tasks = await create(fileset, 'CPU');
@@ -79,4 +82,14 @@ export async function loadVisionModels(): Promise<VisionModels> {
     personMaskIndex: pickPersonMaskIndex(tasks.segmenter.getLabels()),
     loadMs: performance.now() - started,
   };
+}
+/** Звільняє пам'ять моделей (після перемикання на інший делегат). */
+export function closeVisionModels(models: VisionModels) {
+  for (const task of [models.face, models.pose, models.segmenter]) {
+    try {
+      task.close();
+    } catch {
+      /* уже закрито */
+    }
+  }
 }

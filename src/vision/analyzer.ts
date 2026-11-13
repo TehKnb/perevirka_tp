@@ -2,6 +2,7 @@ import { config } from '../config';
 import { buildContour, type Contour } from '../contour/contour';
 import { rasterizePolygon } from '../contour/raster';
 import { computeFrameMetrics, type FrameAnalysis } from './metrics';
+import { MultiPersonFilter } from './people';
 import type { FaceLandmarkerResult, PoseLandmarkerResult } from '@mediapipe/tasks-vision';
 import type { Landmark } from './geometry';
 import type { VisionModels } from './models';
@@ -39,6 +40,9 @@ export interface StageTimings {
  */
 export class Analyzer {
   onTick: ((tick: AnalysisTick) => void) | null = null;
+  /** Аналіз зупинено: кадри раз у раз падають з помилкою (config.analysis.maxConsecutiveErrors). */
+  onError: ((err: unknown) => void) | null = null;
+  private errors = 0;
 
   private running = false;
   private lastRun = 0;
@@ -61,6 +65,9 @@ export class Analyzer {
   private lastPose: PoseLandmarkerResult | null = null;
   private lastSegment: Pick<AnalysisTick, 'metrics' | 'personMask' | 'backgroundMask'> | null = null;
   private timings: StageTimings = { face: 0, pose: 0, segment: 0, metrics: 0 };
+  /** Друга людина провалює пункт, лише якщо тримається кілька тіків поспіль. */
+  private facesFilter = new MultiPersonFilter(config.analysis.multiPersonTicks);
+  private posesFilter = new MultiPersonFilter(config.analysis.multiPersonTicks);
 
   constructor(
     private readonly models: VisionModels,
@@ -76,9 +83,12 @@ export class Analyzer {
 
   stop() {
     this.running = false;
+    this.errors = 0;
     // Після паузи (чи зміни камери) частоту кадрів міряємо заново.
     this.fpsWindow = null;
     this.cameraFps = null;
+    this.facesFilter.reset();
+    this.posesFilter.reset();
     cancelAnimationFrame(this.rafId);
     if ('cancelVideoFrameCallback' in this.video) this.video.cancelVideoFrameCallback(this.vfcId);
   }
@@ -123,8 +133,14 @@ export class Analyzer {
       this.lastRun = now;
       try {
         this.process();
+        this.errors = 0;
       } catch (err) {
         console.error('Помилка аналізу кадру', err);
+        if (++this.errors >= config.analysis.maxConsecutiveErrors) {
+          this.stop();
+          this.onError?.(err);
+          return;
+        }
       }
     }
     this.schedule();
@@ -216,6 +232,8 @@ export class Analyzer {
     );
 
     analysis.metrics.cameraFps = this.cameraFps;
+    analysis.metrics.faces = this.facesFilter.update(analysis.metrics.faces);
+    analysis.metrics.poses = this.posesFilter.update(analysis.metrics.poses);
 
     if (seg.conf) {
       this.lastSegment = analysis;

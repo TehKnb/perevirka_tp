@@ -25,6 +25,7 @@ import {
   type Landmark,
   type ShoulderMetrics,
 } from './geometry';
+import { countFaces, countPoses } from './people';
 
 /** Сирі результати моделей і зменшений кадр за один тік аналізу. */
 export interface FrameInputs {
@@ -214,8 +215,9 @@ export function computeFrameMetrics(input: FrameInputs, p: AnalysisParams): Fram
 
   return {
     metrics: {
-      faces: input.faces.length,
-      poses: input.poses.length,
+      // Окремі люди: без дрібних облич (картини, фото), дублікатів і ледь видних поз.
+      faces: countFaces(input.faces, p),
+      poses: countPoses(input.poses, p),
       face,
       shoulders,
       mask,
