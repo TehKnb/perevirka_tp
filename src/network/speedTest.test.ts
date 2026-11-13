@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { config } from '../config';
-import { mbps, median, speedProblems, speedServers, steadyMbps, withBust, type SpeedResult } from './speedTest';
+import {
+  cloudflareRttMs,
+  mbps,
+  median,
+  serverProcessingMs,
+  speedProblems,
+  speedServers,
+  steadyMbps,
+  withBust,
+  type SpeedResult,
+} from './speedTest';
 
 const result = (
   downloadMbps: number | null,
@@ -66,5 +76,25 @@ describe('mbps / steadyMbps / median', () => {
     expect(median([5, 1, 3])).toBe(3);
     expect(median([4, 1, 3, 2])).toBe(2.5);
     expect(median([])).toBeNaN();
+  });
+});
+
+describe('пінг із Server-Timing Cloudflare', () => {
+  // Справжній заголовок speed.cloudflare.com (два записи Server-Timing, як їх склеює браузер).
+  const header =
+    'cfSpeedEdge;dur=3, cfSpeedWorker;dur=24, cfL4;desc="?proto=TCP&rtt=55013&min_rtt=54779&rtt_var=21011&sent=4&recv=6"';
+
+  it('затримка зʼєднання з cfL4 (мікросекунди → мс), а не min_rtt', () => {
+    expect(cloudflareRttMs(header)).toBeCloseTo(55.013, 3);
+  });
+
+  it('без cfL4 — null (запасний сервер)', () => {
+    expect(cloudflareRttMs(null)).toBeNull();
+    expect(cloudflareRttMs('cfSpeedEdge;dur=3')).toBeNull();
+  });
+
+  it('час обробки на сервері — сума dur', () => {
+    expect(serverProcessingMs(header)).toBe(27);
+    expect(serverProcessingMs(null)).toBe(0);
   });
 });

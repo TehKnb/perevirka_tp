@@ -1,5 +1,6 @@
 import { config } from '../config';
 import { getSupportProblem, readSupportEnv } from '../env';
+import { isAspect } from './aspect';
 import {
   MediaAccessError,
   classifyMediaError,
@@ -18,9 +19,25 @@ function videoConstraints(deviceId?: string, withMin = true): MediaTrackConstrai
     width: withMin ? { ideal: c.idealWidth, min: c.minWidth } : { ideal: c.idealWidth },
     height: withMin ? { ideal: c.idealHeight, min: c.minHeight } : { ideal: c.idealHeight },
     frameRate: { ideal: c.idealFrameRate },
+    aspectRatio: { ideal: c.aspectRatio },
   };
   if (deviceId) constraints.deviceId = { exact: deviceId };
   return constraints;
+}
+
+/**
+ * Якщо камера все ж дала не 16:9 (часто 4:3 — майже квадратна картинка), просимо браузер обрізати
+ * кадр до 16:9. Не вийшло (браузер не вміє обрізати) — лишаємо як є.
+ */
+async function ensureWidescreen(track: MediaStreamTrack): Promise<void> {
+  const target = config.camera.aspectRatio;
+  const { width = 0, height = 0 } = track.getSettings();
+  if (isAspect(width, height, target)) return;
+  try {
+    await track.applyConstraints({ ...videoConstraints(undefined, false), aspectRatio: { exact: target } });
+  } catch (err) {
+    console.warn('Камера не обрізає кадр до 16:9', err);
+  }
 }
 
 function audioConstraints(deviceId?: string): MediaTrackConstraints {
@@ -71,6 +88,7 @@ export class MediaManager {
       stopStream(stream);
       throw new MediaAccessError({ code: 'notFound', kind: video ? 'microphone' : 'camera' });
     }
+    await ensureWidescreen(video);
     this.setVideoTrack(video);
     this.setAudioTrack(audio);
     this.listenDeviceChanges();
@@ -86,6 +104,7 @@ export class MediaManager {
     }
     const track = stream.getVideoTracks()[0];
     if (!track) throw new MediaAccessError({ code: 'notFound', kind: 'camera' });
+    await ensureWidescreen(track);
     this.videoTrack?.stop();
     this.setVideoTrack(track);
   }

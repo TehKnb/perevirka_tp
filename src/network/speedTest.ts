@@ -88,6 +88,23 @@ export function withBust(url: string): string {
   return `${url}${url.includes('?') ? '&' : '?'}r=${Math.random().toString(36).slice(2)}`;
 }
 
+/**
+ * Затримка з'єднання, яку виміряв сам сервер Cloudflare (заголовок Server-Timing, запис cfL4 з rtt
+ * у мікросекундах). Це «чистий» пінг, без часу обробки запиту на сервері. null — заголовка немає
+ * (наш запасний сервер).
+ */
+export function cloudflareRttMs(serverTiming: string | null): number | null {
+  const m = /cfL4;[^,]*?[?&]rtt=(\d+)/.exec(serverTiming ?? '');
+  return m ? Number(m[1]) / 1000 : null;
+}
+
+/** Скільки сервер обробляв запит (сума dur у Server-Timing), мс. */
+export function serverProcessingMs(serverTiming: string | null): number {
+  let total = 0;
+  for (const m of (serverTiming ?? '').matchAll(/;dur=([\d.]+)/g)) total += Number(m[1]);
+  return total;
+}
+
 // ---------------------------------------------------------------------------
 // Вимірювання (працює і в основному потоці, і в Web Worker)
 // ---------------------------------------------------------------------------
@@ -95,7 +112,8 @@ export function withBust(url: string): string {
 const GRACE_MS = 600;
 
 /**
- * Пінг: медіана часу від запиту до першого байта відповіді (перший запит — прогрів, не рахуємо).
+ * Пінг: медіана з кількох запитів (перший — прогрів, не рахуємо). Від Cloudflare беремо затримку,
+ * яку виміряв сам сервер; інакше — час від запиту до першого байта мінус обробка на сервері.
  * Заодно — IP-адреса, якою нас бачить Cloudflare (заголовок cf-meta-ip; може бути IPv6).
  */
 async function measurePing(s: SpeedServer, c: NetworkConfig): Promise<{ pingMs: number; ip: string | null }> {
@@ -109,9 +127,11 @@ async function measurePing(s: SpeedServer, c: NetworkConfig): Promise<{ pingMs: 
     ip ??= res.headers.get('cf-meta-ip');
     await res.arrayBuffer();
     const total = performance.now() - t0;
+    const timing = res.headers.get('server-timing');
     // Для чужого домену браузер без Timing-Allow-Origin дає нулі — тоді беремо повний час запиту.
     const entry = performance.getEntriesByName(url).at(-1) as PerformanceResourceTiming | undefined;
-    const rtt = entry && entry.responseStart > 0 && entry.requestStart > 0 ? entry.responseStart - entry.requestStart : total;
+    const request = entry && entry.responseStart > 0 && entry.requestStart > 0 ? entry.responseStart - entry.requestStart : total;
+    const rtt = cloudflareRttMs(timing) ?? Math.max(1, request - serverProcessingMs(timing));
     if (i > 0) samples.push(rtt);
   }
   return { pingMs: median(samples), ip };
